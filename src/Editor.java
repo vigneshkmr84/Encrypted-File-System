@@ -597,7 +597,7 @@ public class Editor extends javax.swing.JFrame {
             if (ex instanceof PasswordIncorrectException) {
                 javax.swing.JOptionPane.showMessageDialog(null, "Incorrect password");
             } else {
-                javax.swing.JOptionPane.showMessageDialog(null, "Cannot read the file");
+                javax.swing.JOptionPane.showMessageDialog(null, "Cannot read the file :" + ex.getMessage());
             }
         }
     }//GEN-LAST:event_menu_get_file_lengthActionPerformed

@@ -71,6 +71,7 @@ public abstract class Utility {
         }
     }
 
+
     public byte[] read_from_file(File file) throws Exception {
         DataInputStream in = new DataInputStream(
                 new BufferedInputStream(

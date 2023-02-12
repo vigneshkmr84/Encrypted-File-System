@@ -4,6 +4,6 @@ public class Config {
     public static final int MODE_EFS = 1;
 
 
-    public static int MODE = MODE_SAMPLE;
-    //public static int MODE = MODE_EFS;
+//    public static int MODE = MODE_SAMPLE;
+    public static int MODE = MODE_EFS;
 }
