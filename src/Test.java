@@ -53,7 +53,7 @@ public class Test {
         dir.mkdirs();
         System.out.println("Directory Created");
         File meta_file = new File(file_name, "0");
-        save_to_file(generateNewMetaFile(user_name, password), meta_file);
+        save_to_file(generateNewMetaFile(user_name, password, file_name), meta_file);
         System.out.println("Metadata file written successfully");
     }
 
@@ -61,7 +61,7 @@ public class Test {
         byte[] out = new byte[128];
         return null;
     }
-    public static byte[] generateNewMetaFile(String user_name, String password) throws Exception {
+    public static byte[] generateNewMetaFile(String user_name, String password, String fileName) throws Exception {
 
         String randChars = "abcdefghijklmnopqrstuvwxyz";
         randChars += randChars.toUpperCase() + "0123456789";
@@ -75,7 +75,7 @@ public class Test {
         byte[] paddedPass = concatenateByteArrayList(Arrays.asList(saltBytes, passBytes));
         byte[] hashedPass = hash_SHA384(paddedPass);
 
-        String line1 = Base64.getEncoder().encodeToString("111".getBytes());
+        String line1 = Base64.getEncoder().encodeToString(Integer.toString(0).getBytes());
         String line2 = Base64.getEncoder().encodeToString(user_name.getBytes());
         String line3 = Base64.getEncoder().encodeToString(randomPadding(hashedPass, 128));
         String line4 = Base64.getEncoder().encodeToString(randomPadding(concatenateByteArrayList(Arrays.asList(saltBytes, ivBytes)), 256));
@@ -109,20 +109,20 @@ public class Test {
         return rand;
     }
 
-    public static byte[] getSize(String password, int fileSize){
-        int score = getScore(password);
+    public static byte[] getSize(int fileSize, String fileName){
+        int score = getScore(fileName);
         System.out.println(score);
         return String.valueOf(fileSize * score).getBytes();
     }
 
-    public static int getScore(String pass){
-        pass = pass.replaceAll("[^A-Za-z0-9]","");
+    public static int getScore(String fileName){
+        fileName = fileName.replaceAll("[^A-Za-z0-9]","");
         int sum = 0;
-        pass = pass.toLowerCase();
+        fileName = fileName.toLowerCase();
 
-        for (int i = 0; i < pass.length(); i++)
-            sum += pass.charAt(i) - 'a' + 1;
-        return  sum / pass.length();
+        for (int i = 0; i < fileName.length(); i++)
+            sum += fileName.charAt(i) - 'a' + 1;
+        return  sum / fileName.length();
     }
     public static byte[] concatenateByteArrays(byte[] b1, byte[] b2) throws Exception{
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );

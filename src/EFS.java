@@ -26,18 +26,17 @@ public class EFS extends Utility{
     /**
      * Function to generate a score for the password
      * This value is used with file length to confuse the actual file size
-     * @param pass
+     * @param fileName
      * @return
      */
-    public static int getScore(String pass){
-        // remove all special chars
-        pass = pass.replaceAll("[^A-Za-z0-9]","");
+    public static int getScore(String fileName){
+        fileName = fileName.replaceAll("[^A-Za-z0-9]","");
         int sum = 0;
-        pass = pass.toLowerCase();
+        fileName = fileName.toLowerCase();
 
-        for (int i = 0; i < pass.length(); i++)
-            sum += pass.charAt(i) - 'a' + 1;
-        return  sum / pass.length();
+        for (int i = 0; i < fileName.length(); i++)
+            sum += fileName.charAt(i) - 'a' + 1;
+        return  sum / fileName.length();
     }
 
     public static byte[] splitBytes(byte[] array, int sp, int ep) {
@@ -192,7 +191,7 @@ public class EFS extends Utility{
         }else{
             throw new Exception("Invalid Directory / File provided");
         }
-    	return new String(Base64.getDecoder().decode(user_name));
+    	return new String(Base64.getDecoder().decode(user_name)).trim();
     }
 
     /**
@@ -209,7 +208,7 @@ public class EFS extends Utility{
         if (dir.exists() && dir.isDirectory() && verifyPassword(password, file_name)){
             length = new String(Base64.getDecoder().decode(getMetaDataLine(file_name, 0))
                     , StandardCharsets.UTF_8);
-            return Integer.parseInt(length) / getScore(password);
+            return Integer.parseInt(length) / getScore(file_name);
         }
 
         return 0;
@@ -230,12 +229,89 @@ public class EFS extends Utility{
     /**
      * Steps to consider...:<p>
 	 *	- verify password <p>
-     *  - check check if requested starting position and length are valid <p>
+     *  - check if requested starting position and length are valid <p>
      *  - ### main procedure for update the encrypted content ### <p>
      *  - compute new HMAC and update metadata 
      */
     @Override
     public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
+        String str_content = byteArray2String(content);
+        File root = new File(file_name);
+        int file_length = length(file_name, password);
+
+        if (starting_position > file_length) {
+            throw new Exception();
+        }
+
+
+        int len = str_content.length();
+        int start_block = starting_position / Config.BLOCK_SIZE;
+        int end_block = (starting_position + len) / Config.BLOCK_SIZE;
+        for (int i = start_block + 1; i <= end_block + 1; i++) {
+            int sp = (i - 1) * Config.BLOCK_SIZE - starting_position;
+            int ep = (i) * Config.BLOCK_SIZE - starting_position;
+            String prefix = "";
+            String postfix = "";
+            if (i == start_block + 1 && starting_position != start_block * Config.BLOCK_SIZE) {
+
+                prefix = byteArray2String(read_from_file(new File(root, Integer.toString(i))));
+                prefix = prefix.substring(0, starting_position - start_block * Config.BLOCK_SIZE);
+                sp = Math.max(sp, 0);
+            }
+
+            if (i == end_block + 1) {
+                File end = new File(root, Integer.toString(i));
+                if (end.exists()) {
+
+                    postfix = byteArray2String(read_from_file(new File(root, Integer.toString(i))));
+
+                    if (postfix.length() > starting_position + len - end_block * Config.BLOCK_SIZE) {
+                        postfix = postfix.substring(starting_position + len - end_block * Config.BLOCK_SIZE);
+                    } else {
+                        postfix = "";
+                    }
+                }
+                ep = Math.min(ep, len);
+            }
+
+            String toWrite = prefix + str_content.substring(sp, ep) + postfix;
+
+            while (toWrite.length() < Config.BLOCK_SIZE) {
+                toWrite += '\0';
+            }
+
+            save_to_file(toWrite.getBytes(), new File(root, Integer.toString(i)));
+        }
+
+
+        // Update metadata
+        // - Read the first line of the metadata file (decrypt for length)
+        // - add the length of contents to it
+        // - encrypt it back
+        // - update the HMAC of the contents
+
+        if (content.length + starting_position > length(file_name, password)) {
+            String s = byteArray2String(read_from_file(new File(root, "0")));
+            String[] strs = s.split("\n");
+            String s1 = new String(Base64.getDecoder().decode(strs[0]));
+            System.out.println(s1);
+            System.out.println(content.length);
+            int newSize = Integer.parseInt(s1) + content.length + starting_position;
+            System.out.println("New Size : " + newSize);
+            newSize = newSize*getScore(file_name);
+            System.out.println("Score :" + getScore(file_name));
+            System.out.println("Updated Size :" + newSize);
+            strs[0] = Base64.getEncoder().encodeToString(Integer.toString(newSize).getBytes());
+            String toWrite = "";
+            for (String t : strs)
+                toWrite += t + "\n";
+
+            while (toWrite.length() < Config.BLOCK_SIZE) {
+                toWrite += '\0';
+            }
+            save_to_file(toWrite.getBytes(), new File(root, "0"));
+
+        }
     }
 
     /**
@@ -245,7 +321,12 @@ public class EFS extends Utility{
      */
     @Override
     public boolean check_integrity(String file_name, String password) throws Exception {
-    	return true;
+        if ( verifyPassword(password, file_name + File.separator + "0") ){
+
+        }else{
+            throw new PasswordIncorrectException();
+        }
+    	return false;
   }
 
     /**
