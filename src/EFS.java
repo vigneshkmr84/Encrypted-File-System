@@ -232,9 +232,9 @@ public class EFS extends Utility{
     public byte[] read(String file_name, int starting_position, int len, String password) throws Exception{
         File root = new File(file_name);
         int file_length = length(file_name, password);
-        System.out.println("File length : " + file_length);
-        System.out.println("starting pos : " + starting_position);
-        System.out.println("len : " + len);
+        System.out.println("Total File length : " + file_length);
+        System.out.println("Read starting pos : " + starting_position);
+        System.out.println("Read length : " + len);
         if (starting_position + len > file_length) {
             throw new Exception();
         }
@@ -255,8 +255,10 @@ public class EFS extends Utility{
             System.out.println("file : " + blockFile + " length " + f.length);
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decript_AES(f, iv)));
         }
+        System.out.println(toReturn.length);
+        int sp = starting_position % Config.BLOCK_SIZE;
 
-        toReturn = splitBytes(toReturn, starting_position, starting_position + len - 1);
+        toReturn = splitBytes(toReturn, sp, sp + len - 1);
 
         return toReturn;
 
@@ -444,6 +446,26 @@ public class EFS extends Utility{
         }
     }*/
 
+    /**
+     * Algorithm:
+     *  - Read Metadata file for existing file length, iv
+     *  - Use read() method, starting_position and file_length to get the contents of the file
+     *      - Read till end of the file, as all the contents will be affected because of inserting text
+     *      - Read method will by default give the decrypted text
+     *  - starting_position will be adjusted to that entire block itself
+     *  - split the text with the starting_position % BLOCK_SIZE to get the position in that block (prefix & suffix)
+     *  - Append the new text between the split text
+     *  - Append the remaining text till length reaches multiples of 1024 (BLOCK_SIZE)
+     *  - Encrypt the text with the IV from metadata file
+     *  - Remove the file parts that were read
+     *  - Write the new encrypted text into files (Chunks of 1024 bytes into each file)
+     *
+     * @param file_name - file to write
+     * @param starting_position - start position to write
+     * @param content - contents to write from starting_position
+     * @param password - password for the file
+     * @throws Exception
+     */
     @Override
     public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
 
@@ -451,6 +473,7 @@ public class EFS extends Utility{
 
         File rooFolder = new File(file_name);
         int file_length = length(file_name, password);
+        System.out.println("File length " + file_length);
 
 
         if (starting_position > file_length) {
@@ -458,9 +481,9 @@ public class EFS extends Utility{
         }
 
         int len = toWrite.length();
-        int start_block = starting_position / Config.BLOCK_SIZE;
+        int startFilePos = starting_position / Config.BLOCK_SIZE;
         int totalBlocks = (int)Math.ceil((double)(file_length + len) / Config.BLOCK_SIZE);
-        int end_block = (starting_position + len) / Config.BLOCK_SIZE;
+        int endFile = (starting_position + len) / Config.BLOCK_SIZE;
 
         byte[] allBlocks = new byte[]{};
         /*for (int i = start_block + 1; i <= totalBlocks; i++) {
@@ -472,23 +495,43 @@ public class EFS extends Utility{
 //            new File(blockFile).delete();
         }*/
 
-        byte[] contents = read(file_name, start_block * Config.BLOCK_SIZE, file_length - starting_position, password);
+        int sp = startFilePos * Config.BLOCK_SIZE;
+        int ep = file_length - sp - 1;
+
+        byte[] contents = read(file_name, sp, ep, password);
+//        byte[] contents = read(file_name, starting_position, file_length - starting_position -1, password);
 
         allBlocks = contents;
         String allBlocksString = new String(allBlocks);
 
-//        int ep = Math.min(Config.BLOCK_SIZE, starting_position % Config.BLOCK_SIZE);
-        int ep = starting_position % Config.BLOCK_SIZE-1;
-        if (starting_position % Config.BLOCK_SIZE-1 < 0 )
-            ep = 0;
+//        int breakPoint = Math.min(Config.BLOCK_SIZE, starting_position % Config.BLOCK_SIZE);
+        int breakPoint = starting_position % Config.BLOCK_SIZE-1;
+        if (breakPoint < 0 )
+            breakPoint = 0;
 
-        String prefix = allBlocksString.substring(0, ep);
+        System.out.println("Total READ Length : " + allBlocksString.length());
+        String prefix = allBlocksString.substring(0, breakPoint);
 //        String suffix = allBlocksString.substring(starting_position % Config.BLOCK_SIZE, Config.BLOCK_SIZE -1 );
-        String suffix = allBlocksString.substring(starting_position % Config.BLOCK_SIZE);
+        String suffix = allBlocksString.substring(breakPoint);
+
+        System.out.println("Prefix Length " + prefix.length());
+        System.out.println("Suffix Length " + suffix.length());
+        System.out.println("To Write length " + toWrite.length());
 
         String finalMessage = prefix + toWrite + suffix;
-        System.out.println(finalMessage);
-        System.out.println(finalMessage.length());
+        System.out.println("Write Output length : " + finalMessage.length());
+
+        int paddedLength = (int)Math.ceil((double)finalMessage.length()/Config.BLOCK_SIZE) * Config.BLOCK_SIZE;
+        System.out.println("Expected Padded Length : " + paddedLength);
+
+        while ( finalMessage.length() < paddedLength){
+            finalMessage += "\0";
+        }
+
+        System.out.println("Start Block for writing : " + (startFilePos+1));
+        System.out.println("Total blocks to write : " + finalMessage.length() / Config.BLOCK_SIZE);
+        System.out.println("Actual Padded Length : " + finalMessage.length());
+        System.out.println("Write Final Output : " + finalMessage);
     }
 
     /**
