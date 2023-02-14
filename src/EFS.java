@@ -242,21 +242,21 @@ public class EFS extends Utility{
         byte[] iv = "2b7e151628aed2a6abf71589".getBytes();
 //        byte[] iv = getIV(file_name);
 
-        System.out.println("IV " + new String(iv));
+        System.out.println("IV : " + new String(iv));
         int start_block = starting_position / Config.BLOCK_SIZE;
+        int end_block = (starting_position + len - 1) / Config.BLOCK_SIZE;
 
-        int end_block = (starting_position + len) / Config.BLOCK_SIZE;
-
+        System.out.println("Read File Start Block : " + start_block + " End Block : " + end_block);
         byte[] toReturn = new byte[]{};
 
         for ( int i= start_block + 1; i<= end_block +1; i++){
             String blockFile = file_name + File.separator + i;
             byte[] f = read_from_file(new File(blockFile));
-            System.out.println("file : " + blockFile + " length " + f.length);
+            System.out.println("Reading file : " + blockFile + ", length " + f.length);
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decript_AES(f, iv)));
         }
         System.out.println(toReturn.length);
-        int sp = starting_position % Config.BLOCK_SIZE;
+        int sp = Math.max(starting_position % Config.BLOCK_SIZE -1, 0);
 
         toReturn = splitBytes(toReturn, sp, sp + len - 1);
 
@@ -477,6 +477,7 @@ public class EFS extends Utility{
 
 
         if (starting_position > file_length) {
+            System.out.println("Starting pos > file length");
             throw new Exception();
         }
 
@@ -496,7 +497,8 @@ public class EFS extends Utility{
         }*/
 
         int sp = startFilePos * Config.BLOCK_SIZE;
-        int ep = file_length - sp - 1;
+        sp = Math.max(sp, 0);
+        int ep = file_length - sp;
 
         byte[] contents = read(file_name, sp, ep, password);
 //        byte[] contents = read(file_name, starting_position, file_length - starting_position -1, password);
