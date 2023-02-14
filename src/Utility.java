@@ -109,6 +109,15 @@ public abstract class Utility {
         }
     }
 
+    /**
+     * Given byte array is encrypted with the 128 bit key array
+     * AES/ECB/NoPadding is used
+     * 1024 byte input gives 1024 byte output (As there is no padding)
+     * @param plainText
+     * @param key
+     * @return
+     * @throws Exception
+     */
     public static byte[] encript_AES(byte[] plainText, byte[] key) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
         SecretKeySpec secretKey = new SecretKeySpec(key, "AES");

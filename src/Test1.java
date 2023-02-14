@@ -1,4 +1,5 @@
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -35,10 +36,36 @@ public class Test1 {
         byte[] hmac = hmac(str, key);
         System.out.println(Base64.getEncoder().encodeToString(hmac));*/
 
-        String s = "MA==";
+        /*String s = "MA==";
         String s1 = new String(Base64.getDecoder().decode(s));
         System.out.println(s1);
-        System.out.println(Integer.valueOf(new String(Base64.getDecoder().decode(s))));
+        System.out.println(Integer.valueOf(new String(Base64.getDecoder().decode(s))));*/
+
+        /*String text = "Agreed joy vanity regret met may ladies oppose who. Mile fail as left as hard eyes. Meet made call in mean four year it to. Prospect so branched wondered sensible of up. For gay consisted resolving pronounce sportsman saw discovery not. Northward or household as conveying we earnestly believing. No in up contrasted discretion inhabiting excellence. Entreaties we collecting unpleasant at everything conviction. Perpetual sincerity out suspected necessary one but provision satisfied. Respect nothing use set waiting pursuit nay you looking. If on prevailed concluded ye abilities. Address say you new but minuter greater. Do denied agreed in innate. Can and middletons thoroughly themselves him. Tolerably sportsmen belonging in september no am immediate newspaper. Theirs expect dinner it pretty indeed having no of. Principle september she conveying did eat may extensive. On then sake home is am leaf. Of suspicion do departure at extremely he believing. Do know said mind do rent they oh hope of. General Agreed joy ma";
+        String text1 = "Agreed joy vanity regret met may ladies oppose who. Mile fail as left as hard eyes.Agreed joy va";
+
+//        byte[] s1 = secureRandomNumber(16);
+        byte[] s1 = "lbfwrzjjppnpgdng".getBytes();
+
+        System.out.println(new String(s1));
+        System.out.println(Utility.encript_AES(text.getBytes(), s1).length);
+        System.out.println(Utility.encript_AES(text1.getBytes(), s1).length);
+
+        Test.save_to_file(Utility.encript_AES(text.getBytes(), s1), new File("/Users/vigneshthirunavukkarasu/Info-sec/text.txt"));
+        Test.save_to_file(Utility.encript_AES(text1.getBytes(), s1), new File("/Users/vigneshthirunavukkarasu/Info-sec/text1.txt"));
+
+        System.out.println(new String(Utility.encript_AES(text.getBytes(), s1)).length());
+        System.out.println(new String(Utility.encript_AES(text1.getBytes(), s1)).length());*/
+
+//        byte[] b = "this is a test12".getBytes();
+        byte[] b = "Agreed joy vanity".getBytes();
+
+        System.out.println(new String(splitBytesWithSize(b, 3, 8)));
+
+    }
+
+    public static byte[] splitBytesWithSize(byte[] array, int sp, int len) {
+        return Arrays.copyOfRange(array, sp, sp + len);
     }
 
     public static byte[] zeroPad(byte[] b, int outputByteSize){
