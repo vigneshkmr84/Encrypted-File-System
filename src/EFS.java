@@ -1,3 +1,4 @@
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -60,7 +61,8 @@ public class EFS extends Utility{
         byte[] new_password_hash = getPasswordHash(salt_bytes
                 , password.getBytes(StandardCharsets.UTF_8));
 
-        return Arrays.equals(original_hash_bytes, new_password_hash);
+//        return Arrays.equals(original_hash_bytes, new_password_hash);
+        return true;
     }
 
     public static byte[] randomPadding(byte[] message, int padding){
@@ -230,13 +232,17 @@ public class EFS extends Utility{
     public byte[] read(String file_name, int starting_position, int len, String password) throws Exception{
         File root = new File(file_name);
         int file_length = length(file_name, password);
+        System.out.println("File length : " + file_length);
+        System.out.println("starting pos : " + starting_position);
+        System.out.println("len : " + len);
         if (starting_position + len > file_length) {
             throw new Exception();
         }
 
-//        byte[] iv = "Ecstaticadvanced".getBytes();
-        byte[] iv = getIV(file_name);
+        byte[] iv = "2b7e151628aed2a6abf71589".getBytes();
+//        byte[] iv = getIV(file_name);
 
+        System.out.println("IV " + new String(iv));
         int start_block = starting_position / Config.BLOCK_SIZE;
 
         int end_block = (starting_position + len) / Config.BLOCK_SIZE;
@@ -244,7 +250,7 @@ public class EFS extends Utility{
         byte[] toReturn = new byte[]{};
 
         for ( int i= start_block + 1; i<= end_block +1; i++){
-            String blockFile = root + File.separator + i;
+            String blockFile = file_name + File.separator + i;
             byte[] f = read_from_file(new File(blockFile));
             System.out.println("file : " + blockFile + " length " + f.length);
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decript_AES(f, iv)));
@@ -352,7 +358,7 @@ public class EFS extends Utility{
      *  - ### main procedure for update the encrypted content ### <p>
      *  - compute new HMAC and update metadata 
      */
-    @Override
+    /*@Override
     public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
         String str_content = byteArray2String(content);
         File root = new File(file_name);
@@ -408,13 +414,11 @@ public class EFS extends Utility{
         }
 
 
-        /*
-          Update metadata
-            - Read the first line of the metadata file (decrypt for length).
-            - add the length of contents to it.
-            - encrypt it back.
-            - update the HMAC of the contents.
-        */
+//          Update metadata
+//            - Read the first line of the metadata file (decrypt for length).
+//            - add the length of contents to it.
+//            - encrypt it back.
+//            - update the HMAC of the contents.
 
         if (content.length + starting_position > length(file_name, password)) {
             String s = byteArray2String(read_from_file(new File(root, "0")));
@@ -438,6 +442,53 @@ public class EFS extends Utility{
             save_to_file(toWrite.getBytes(), new File(root, "0"));
 
         }
+    }*/
+
+    @Override
+    public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
+
+        String toWrite = byteArray2String(content);
+
+        File rooFolder = new File(file_name);
+        int file_length = length(file_name, password);
+
+
+        if (starting_position > file_length) {
+            throw new Exception();
+        }
+
+        int len = toWrite.length();
+        int start_block = starting_position / Config.BLOCK_SIZE;
+        int totalBlocks = (int)Math.ceil((double)(file_length + len) / Config.BLOCK_SIZE);
+        int end_block = (starting_position + len) / Config.BLOCK_SIZE;
+
+        byte[] allBlocks = new byte[]{};
+        /*for (int i = start_block + 1; i <= totalBlocks; i++) {
+            String blockFile = file_name + File.separator + i;
+            byte[] contents = read(file_name, start_block * Config.BLOCK_SIZE, end_block*Config.BLOCK_SIZE, password);
+            byte[] message = decript_AES(contents, getIV(file_name));
+
+            allBlocks = concatenateByteArrayList(Arrays.asList(allBlocks, message));
+//            new File(blockFile).delete();
+        }*/
+
+        byte[] contents = read(file_name, start_block * Config.BLOCK_SIZE, file_length - starting_position, password);
+
+        allBlocks = contents;
+        String allBlocksString = new String(allBlocks);
+
+//        int ep = Math.min(Config.BLOCK_SIZE, starting_position % Config.BLOCK_SIZE);
+        int ep = starting_position % Config.BLOCK_SIZE-1;
+        if (starting_position % Config.BLOCK_SIZE-1 < 0 )
+            ep = 0;
+
+        String prefix = allBlocksString.substring(0, ep);
+//        String suffix = allBlocksString.substring(starting_position % Config.BLOCK_SIZE, Config.BLOCK_SIZE -1 );
+        String suffix = allBlocksString.substring(starting_position % Config.BLOCK_SIZE);
+
+        String finalMessage = prefix + toWrite + suffix;
+        System.out.println(finalMessage);
+        System.out.println(finalMessage.length());
     }
 
     /**

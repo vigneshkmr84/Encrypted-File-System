@@ -58,9 +58,14 @@ public class Test1 {
         System.out.println(new String(Utility.encript_AES(text1.getBytes(), s1)).length());*/
 
 //        byte[] b = "this is a test12".getBytes();
-        byte[] b = "Agreed joy vanity".getBytes();
 
-        System.out.println(new String(splitBytesWithSize(b, 3, 8)));
+        /*byte[] b = "Agreed joy vanity".getBytes();
+
+        System.out.println(new String(splitBytesWithSize(b, 3, 8)));*/
+
+        String fileName = "/Users/vigneshthirunavukkarasu/Info-sec/text.txt";
+
+        System.out.println(EFS.getScore(fileName));
 
     }
 
