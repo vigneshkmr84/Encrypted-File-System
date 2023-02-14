@@ -77,6 +77,11 @@ public class EFS extends Utility{
         return hash_SHA384(paddedPass);
     }
 
+    public byte[] getIV(String fileName) throws Exception {
+        byte[] data = Base64.getDecoder().decode(getMetaDataLine(fileName, 3));
+        return splitBytes(data, 16, 31);
+    }
+
     public byte[] generateNewMetaFile(String user_name, String password) throws Exception {
 
         /*StringBuilder sb = new StringBuilder();
@@ -224,46 +229,27 @@ public class EFS extends Utility{
     @Override
     public byte[] read(String file_name, int starting_position, int len, String password) throws Exception{
         File root = new File(file_name);
-//        int file_length = length(file_name, password);
-        int file_length = 1216;
+        int file_length = length(file_name, password);
         if (starting_position + len > file_length) {
             throw new Exception();
         }
 
-        byte[] iv = "Ecstaticadvanced".getBytes();
+//        byte[] iv = "Ecstaticadvanced".getBytes();
+        byte[] iv = getIV(file_name);
 
         int start_block = starting_position / Config.BLOCK_SIZE;
 
         int end_block = (starting_position + len) / Config.BLOCK_SIZE;
 
-//        String toReturn = "";
         byte[] toReturn = new byte[]{};
 
-        /*for (int i = start_block + 1; i <= end_block + 1; i++) {
-            String temp = new String(read_from_file(new File(root, Integer.toString(i))));
-            if (i == end_block + 1) {
-                temp = temp.substring(0, starting_position + len - end_block * Config.BLOCK_SIZE);
-                System.out.println(temp.length());
-                temp = new String(decript_AES(temp.getBytes(), iv));
-            }
-            if (i == start_block + 1) {
-                temp = temp.substring(starting_position - start_block * Config.BLOCK_SIZE);
-                System.out.println(temp.length());
-                temp = new String(decript_AES(temp.getBytes(), iv));
-            }
-            toReturn += temp;
-        }*/
-
         for ( int i= start_block + 1; i<= end_block +1; i++){
-            String blockFile = root + File.separator + Integer.toString(i);
+            String blockFile = root + File.separator + i;
             byte[] f = read_from_file(new File(blockFile));
             System.out.println("file : " + blockFile + " length " + f.length);
-//            toReturn += new String(decript_AES(f, iv));
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decript_AES(f, iv)));
         }
 
-//        toReturn = toReturn.substring(starting_position, starting_position + len -1);
-//        return toReturn.getBytes("UTF-8");
         toReturn = splitBytes(toReturn, starting_position, starting_position + len - 1);
 
         return toReturn;
