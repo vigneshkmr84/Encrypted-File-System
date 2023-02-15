@@ -43,7 +43,14 @@ public class EFS extends Utility{
         return  sum / fileName.length();
     }
 
-    // update the length first line of the metadata file (0th file)
+    /**
+     * Update the length of the file
+     * Modify first line in metadata file (0th file)
+     *
+     * @param fileName - file name to be updated
+     * @param length - new length (old length will be removed)
+     * @throws Exception
+     */
     public void updateFileLength(String fileName, int length) throws Exception {
         String metaFile = fileName + File.separator + "0";
 //        String len = new String(Base64.getDecoder().decode(lenBase64));
@@ -274,7 +281,7 @@ public class EFS extends Utility{
 //        byte[] iv = "2b7e151628aed2a6abf71589".getBytes();
         byte[] iv = getIV(file_name);
 
-        System.out.println("IV : " + new String(iv));
+//        System.out.println("IV : " + new String(iv));
         int start_block = starting_position / Config.BLOCK_SIZE;
         int end_block = (starting_position + len - 1) / Config.BLOCK_SIZE;
 
@@ -445,26 +452,59 @@ public class EFS extends Utility{
     /**
      * Steps to consider... <p>
      *  - verify password <p>
-     *  - truncate the content after the specified length <p>
+     *  - truncate the content after the specified newLength <p>
      *  - re-pad, update metadata and HMAC <p>
      */
     @Override
-    public void cut(String file_name, int length, String password) throws Exception {
-        int currLen = length(file_name, password);
-        int totalFileParts = (int) Math.ceil((double) currLen / Config.BLOCK_SIZE);
-        int totalLength = (int)Math.ceil((double) currLen / Config.BLOCK_SIZE) * Config.BLOCK_SIZE;
+    public void cut(String file_name, int len, String password) throws Exception {
 
-        if ( verifyPassword(password, file_name) ){
-            if (length < currLen){
-                throw new Exception("Can't cut. Length issue.");
-            }else{
-                int cutPos = currLen - length -1;
-                updateFileLength(file_name, length);
-            }
+        File root = new File(file_name);
+        int file_length = length(file_name, password);
 
-        }else{
-            throw new PasswordIncorrectException();
+        if (len > file_length) {
+            throw new Exception();
         }
+        int end_block = (len) / Config.BLOCK_SIZE;
+
+        byte[] iv = getIV(file_name);
+        File file = new File(root, Integer.toString(end_block + 1));
+
+        // decrypt the file and save as string
+        byte[] dec = decript_AES(read_from_file(file), iv);
+        String str = new String(dec);
+
+        str = str.substring(0, len - end_block * Config.BLOCK_SIZE);
+        while (str.length() < Config.BLOCK_SIZE) {
+            str += '\0';
+        }
+
+        // re-encrypt the contents ans save to file
+        byte[] enc = encript_AES(str.getBytes(), iv);
+        save_to_file(enc, file);
+
+        int cur = end_block + 2;
+        file = new File(root, Integer.toString(cur));
+        while (file.exists()) {
+            file.delete();
+            cur++;
+        }
+
+        //update meta data
+        /*String s = byteArray2String(read_from_file(new File(root, "0")));
+        String[] strs = s.split("\n");
+        strs[0] = Integer.toString(len);
+        String toWrite = "";
+        for (String t : strs) {
+            toWrite += t + "\n";
+        }
+
+        System.out.println(toWrite);
+        while (toWrite.length() < Config.BLOCK_SIZE) {
+            toWrite += '\0';
+        }
+        save_to_file(toWrite.getBytes(), new File(root, "0"));*/
+
+        updateFileLength(file_name, len);
 
     }
   

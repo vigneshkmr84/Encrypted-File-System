@@ -184,6 +184,8 @@ public class Sample extends Utility {
         for (String t : strs) {
             toWrite += t + "\n";
         }
+
+        System.out.println(toWrite);
         while (toWrite.length() < Config.BLOCK_SIZE) {
             toWrite += '\0';
         }
