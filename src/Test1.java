@@ -63,10 +63,22 @@ public class Test1 {
 
         System.out.println(new String(splitBytesWithSize(b, 3, 8)));*/
 
-        String fileName = "/Users/vigneshthirunavukkarasu/Info-sec/text.txt";
+        /*String fileName = "/Users/vigneshthirunavukkarasu/Info-sec/text.txt";
 
-        System.out.println(EFS.getScore(fileName));
+        System.out.println(EFS.getScore(fileName));*/
 
+        String p = "nPJ3nEzy/gMCVcjWjU+Bo6RPg6SrF+xMUoADoiv7g3IfVuLRVrzeaQiIY8wkYCYsw7tMCxrKELi1aE3N4eEeLGS+e8rB0IY6Tvsv2wYfRBryYK635uhF/mu3GNfi6/PJNtlLfwb4eBjvT8eOW6TrFyeRzmA9iY5wwOKJW/XgKPw=";
+        byte[] pwd = Base64.getDecoder().decode(p);
+
+        String s = "MmI3ZTE1MTYyOGFlZDJhNmFiZjcxNTg5MmI3ZTE1MTYyOGFlZDJhNmFiZjcxNTg5OG1UWENXYXNFMnlLR1REQjJqU21RcU41ODFzaFBMcldpSUF6NlNLeWN1ekFzRjBxbEVWbWlsNzVvRmhGTHNLZTFrZlFZVkgxbURUa0dvSHAzeUFzMXRiclBKRll6ZkhmSU9tRnNJdWJxbTU5NWdTU28yTWd2cWxvR2VrWjQ0VXdTM052YjNQbTJRNzhpalhmY3prMlc0NGtIZVFrc0QzOGZkcFNkaHJOUWRIMWtHTU1ER2dpY2w1YnB3ZEpnUWEzNmFiNHFaUXNkQXBhYkU4Yg==";
+//        splitBytes(pwd, )
+
+    }
+
+
+    public static boolean verifyPassword(byte[] line3, byte[] line4){
+
+        return false;
     }
 
     public static byte[] splitBytesWithSize(byte[] array, int sp, int len) {
