@@ -285,6 +285,31 @@ public class EFS extends Utility{
             new File(file_name, String.valueOf(startBlock++)).delete();
     }
 
+
+    public static byte[] byteXOR(byte[] key, byte[] pad){
+        byte[] out = new byte[key.length];
+        for ( int i=0; i< key.length; i++)
+            out[i] = (byte) (key[i] ^ pad[i%pad.length]);
+
+        return out;
+    }
+
+
+    public byte[] calculateHMAC(byte[] message, byte[] key) throws Exception {
+
+        key = key.length > 64 ? Test.hash_SHA256(key): zeroPad(key, 64);
+
+        byte[] ipad = new byte[]{0x36};
+        byte[] opad = new byte[]{0x5c};
+
+        byte[] ipadKey = byteXOR(key, ipad);
+        byte[] opadKey = byteXOR(key, opad);
+
+        byte[] firstHash = Utility.hash_SHA256(concatenateByteArrayList(Arrays.asList(ipadKey, message)));
+
+        return Utility.hash_SHA256(concatenateByteArrayList(Arrays.asList(opadKey, firstHash)));
+    }
+
     /**
      * End Helper functions
      */
@@ -509,12 +534,30 @@ public class EFS extends Utility{
      */
     @Override
     public boolean check_integrity(String file_name, String password) throws Exception {
-        if ( verifyPassword(password, file_name + File.separator + "0") ){
+
+        int status = 0;
+
+        if ( verifyPassword(password, file_name ) ){
+
+            int length = length(file_name, password);
+            byte[] iv = getIV(file_name);
+            int totalFiles = (length) / 992;
+
+            for ( int i=1; i<=totalFiles + 1; i++){
+                String f = file_name + File.separator + i;
+                byte[] msg = read_from_file(new File(f));
+                byte[] enc = splitBytes(msg, 0, 991);
+                String fileHMAC = new String(splitBytes(msg, 992, 1024));
+                String calculatedHMAC = new String(calculateHMAC(enc, iv));
+                if (calculatedHMAC.equals(fileHMAC))
+                    status++;
+            }
 
         }else{
             throw new PasswordIncorrectException();
         }
-    	return false;
+
+    	return status == 0;
   }
 
     /**

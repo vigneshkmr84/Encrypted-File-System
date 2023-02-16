@@ -3,8 +3,6 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -105,7 +103,7 @@ public class Test1 {
 //        byte[] iv = secureRandomNumber(16);
 //        byte[] iv = "1234567890123456".getBytes();
         String file1 = "wkGzcan0NzzqKZoa53tP9B2jWoBWo9VFFdfTkphr9RMldAmNRrWd5qTo4twEva8asF9HFBEzjIyUN6Mq6c76JzaMRVNthBCo9TXLyJKjtE5TzqmHzBrd88AKW9juc4LJZcpyHNvSymT8n0M8W5AzyS1hDfVcBMKPaJDYN9fCRuDZT24HED84gAsBbEeEthmGATBm7SsPeOjRP8Y5A2nw8lfyIfdNfjQzWOYqCTIiGl0nQvZeF2d1i5uuJhRQKba5MNfpeA2Is8IfNO3nePLytpqssAv8Hk0j98e1wnHvAV751pAjLJHGg19JNcIW5O3Gk8eHIB8OY8ZplpVVf0UPhsbNUgSV5Mxy04z6JueFxFOS0Lq3GEf4W900KxMuInCHgswlIVqy3FDTQzzKlasts6t5YqmL42e74cCheTHaHdFK8jJbeRzbctMGSph9IUAK6k06FJ1FajcrZFbavWtDxLH0tRyFkI0GKKD0tJVgLo7BPm5ixXwxx9xJO7ZgPk7efBWmQYBF7yCb4Z1P4C7aVMunpS6JVn3mSBYPK63lfPYaom4S5lJCj0C6NdXAV8BsuZzfEmg0JS8J8cpHjtOjJDMBXgpr2QmWKr7U8iImDAZdpFw6K9c1jRbW9WTyAg8al05dYItbAzCSecBBx6qKewQMBzo0zSoYtcdrK4cRcrgWKpclRuOmS52fijrYWZHgX2kb0yDIOCwSawPfE6kkovEPS3ainYXPXG1KkTe93ua09EsGuojMaIRNretWMNggdgF9TBa79S7WkJVSLmKJMgQ1bYUQ3UJusPhmGNXoOo2xn0YGbNwmF59kNtEosJrP0vZMQfUl4xg1i0GdeUbF9d5MBKRuYN3iFZrieMZHTMtKp83ZG0zMYXl4EvPI8dXLssUbhFGBHlrBSczhOK4NX5XfLuyuyeNSGMJuxOxpxjBYltQne4REpkURz5rHm2HdVe8CY9583NvEyAjOOIFNt1QABIwuvb40i6eQUaY28SAlMgFKjlqY1n7TduYt9cwi";
-        String file2 = "This is a new test line added in file 2";
+        String file2 = "This is a new test line added in file 1";
 
         String line3 = "ETSEg6lPUzkYPSihpw2gNcHbpPyjoa1i+0qexP6QKzkglrVVkOXyKQFLhu8YnmtUdpWL6l4pbf80BiZN5Oo9cFCXCM0FAdI6OQ2uLG5bX2gYcQD3s5ZrapDmJ39mUK6C+ZNMSfBjpoB4bxLU4Fw6vLPMhawfyRvI1ckSuaDlQraDatoGaQ5EzygZWrujAvdeFzmCgzln6XcIjZHgLZt1L7+hTrTmSTw1hJnnvtj4zHOgv+GpZ2HjT1Fp/Q3wrtoqovHJlI0sNM42cvl44rd+Uhr6dAfLpfnLBRHTu2dIEihlzRvNNiWdfwoQeH4sYUp3jTL0zwBXQwxAa4Cvgc2iTw==";
         byte[] iv = splitBytes(16, 31, Base64.getDecoder().decode(line3));
@@ -120,22 +118,27 @@ public class Test1 {
 
         System.out.println("Original : " + new String(messageByte));
 
-        incrementIV(ivEnc, 64);
-        byte[] encrypted = blockEncrypt(messageByte, ivEnc, 16, Config.BLOCK_SIZE);
+//        incrementIV(ivEnc, 64);
+        byte[] encrypted = blockEncrypt(messageByte, ivEnc, 16, 992);
 
         System.out.println(Base64.getEncoder().encodeToString(encrypted));
         System.out.println(new String(iv));
         System.out.println(new String(ivEnc));
 
+        byte[] hmac = HmacTest.calculateHMAC(encrypted, iv);
 
-        incrementIV(ivDec, 64);
-        Test.save_to_file(encrypted, new File("/Users/vigneshthirunavukkarasu/Info-sec/block_enc.txt/2"));
+        byte[] signedEncryptedBytes = concatenateByteArrayList(Arrays.asList(encrypted, hmac));
 
-        byte[] decrypted = blockDecrypt(encrypted, ivDec, messageByte.length, 16);
+
+//        incrementIV(ivDec, 64);
+        Test.save_to_file(signedEncryptedBytes
+                , new File("/Users/vigneshthirunavukkarasu/Info-sec/hmac.txt/1"));
+
+        /*byte[] decrypted = blockDecrypt(encrypted, ivDec, messageByte.length, 16);
 
         System.out.println(new String(iv));
         System.out.println(new String(ivEnc));
-        System.out.println("decrypted : " + new String(decrypted));
+        System.out.println("decrypted : " + new String(decrypted));*/
     }
 
     private static void printBytes(byte[] b) {
