@@ -1,3 +1,6 @@
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.math.BigInteger;
@@ -67,12 +70,159 @@ public class Test1 {
 
         System.out.println(EFS.getScore(fileName));*/
 
-        String p = "nPJ3nEzy/gMCVcjWjU+Bo6RPg6SrF+xMUoADoiv7g3IfVuLRVrzeaQiIY8wkYCYsw7tMCxrKELi1aE3N4eEeLGS+e8rB0IY6Tvsv2wYfRBryYK635uhF/mu3GNfi6/PJNtlLfwb4eBjvT8eOW6TrFyeRzmA9iY5wwOKJW/XgKPw=";
-        byte[] pwd = Base64.getDecoder().decode(p);
+//        String p = "nPJ3nEzy/gMCVcjWjU+Bo6RPg6SrF+xMUoADoiv7g3IfVuLRVrzeaQiIY8wkYCYsw7tMCxrKELi1aE3N4eEeLGS+e8rB0IY6Tvsv2wYfRBryYK635uhF/mu3GNfi6/PJNtlLfwb4eBjvT8eOW6TrFyeRzmA9iY5wwOKJW/XgKPw=";
+//        byte[] pwd = Base64.getDecoder().decode(p);
 
-        String s = "MmI3ZTE1MTYyOGFlZDJhNmFiZjcxNTg5MmI3ZTE1MTYyOGFlZDJhNmFiZjcxNTg5OG1UWENXYXNFMnlLR1REQjJqU21RcU41ODFzaFBMcldpSUF6NlNLeWN1ekFzRjBxbEVWbWlsNzVvRmhGTHNLZTFrZlFZVkgxbURUa0dvSHAzeUFzMXRiclBKRll6ZkhmSU9tRnNJdWJxbTU5NWdTU28yTWd2cWxvR2VrWjQ0VXdTM052YjNQbTJRNzhpalhmY3prMlc0NGtIZVFrc0QzOGZkcFNkaHJOUWRIMWtHTU1ER2dpY2w1YnB3ZEpnUWEzNmFiNHFaUXNkQXBhYkU4Yg==";
+//        String s = "MmI3ZTE1MTYyOGFlZDJhNmFiZjcxNTg5MmI3ZTE1MTYyOGFlZDJhNmFiZjcxNTg5OG1UWENXYXNFMnlLR1REQjJqU21RcU41ODFzaFBMcldpSUF6NlNLeWN1ekFzRjBxbEVWbWlsNzVvRmhGTHNLZTFrZlFZVkgxbURUa0dvSHAzeUFzMXRiclBKRll6ZkhmSU9tRnNJdWJxbTU5NWdTU28yTWd2cWxvR2VrWjQ0VXdTM052YjNQbTJRNzhpalhmY3prMlc0NGtIZVFrc0QzOGZkcFNkaHJOUWRIMWtHTU1ER2dpY2w1YnB3ZEpnUWEzNmFiNHFaUXNkQXBhYkU4Yg==";
 //        splitBytes(pwd, )
 
+//        byte[] b = {1, 2, 3, 4, 127};
+        byte[] b = "abc".getBytes();
+
+//        printBytes(b);
+//        System.out.println("string " + new String(b));
+//        for ( int i=0; i< 20; i++){
+//            incrementIV(b, 4);
+////            increment(b);
+//            System.out.println(new String(b));
+//        }
+
+        /*for (int i = 0; i < b.length; i++) {
+            b[i] += 1;
+        }*/
+
+        System.out.println("Before : " + new String(b, StandardCharsets.UTF_8));
+
+
+//        for ( int i=0; i< 200; i++) {
+//            incrementIV(b);
+//            System.out.println("After : " + new String(b, StandardCharsets.UTF_8));
+//        }
+//        printBytes(b);
+
+
+
+//        byte[] iv = secureRandomNumber(16);
+        byte[] iv = "1234567890123456".getBytes();
+        String msg = "wkGzcan0NzzqKZoa53tP9B2jWoBWo9VFFdfTkphr9RMldAmNRrWd5qTo4twEva8asF9HFBEzjIyUN6Mq6c76JzaMRVNthBCo9TXLyJKjtE5TzqmHzBrd88AKW9juc4LJZcpyHNvSymT8n0M8W5AzyS1hDfVcBMKPaJDYN9fCRuDZT24HED84gAsBbEeEthmGATBm7SsPeOjRP8Y5A2nw8lfyIfdNfjQzWOYqCTIiGl0nQvZeF2d1i5uuJhRQKba5MNfpeA2Is8IfNO3nePLytpqssAv8Hk0j98e1wnHvAV751pAjLJHGg19JNcIW5O3Gk8eHIB8OY8ZplpVVf0UPhsbNUgSV5Mxy04z6JueFxFOS0Lq3GEf4W900KxMuInCHgswlIVqy3FDTQzzKlasts6t5YqmL42e74cCheTHaHdFK8jJbeRzbctMGSph9IUAK6k06FJ1FajcrZFbavWtDxLH0tRyFkI0GKKD0tJVgLo7BPm5ixXwxx9xJO7ZgPk7efBWmQYBF7yCb4Z1P4C7aVMunpS6JVn3mSBYPK63lfPYaom4S5lJCj0C6NdXAV8BsuZzfEmg0JS8J8cpHjtOjJDMBXgpr2QmWKr7U8iImDAZdpFw6K9c1jRbW9WTyAg8al05dYItbAzCSecBBx6qKewQMBzo0zSoYtcdrK4cRcrgWKpclRuOmS52fijrYWZHgX2kb0yDIOCwSawPfE6kkovEPS3ainYXPXG1KkTe93ua09EsGuojMaIRNretWMNggdgF9TBa79S7WkJVSLmKJMgQ1bYUQ3UJusPhmGNXoOo2xn0YGbNwmF59kNtEosJrP0vZMQfUl4xg1i0GdeUbF9d5MBKRuYN3iFZrieMZHTMtKp83ZG0zMYXl4EvPI8dXLssUbhFGBHlrBSczhOK4NX5XfLuyuyeNSGMJuxOxpxjBYltQne4REpkURz5rHm2HdVe8CY9583NvEyAjOOIFNt1QABIwuvb40i6eQUaY28SAlMgFKjlqY1n7TduYt9cwi";
+//        byte[] message = "this is a testthis is a test".getBytes(); //is is a test1234
+        byte[] message = msg.getBytes();
+//        byte[] message = "this is a test".getBytes();
+
+        byte[] ivEnc = new byte[iv.length];
+        byte[] ivDec = new byte[iv.length];
+
+        System.arraycopy(iv, 0, ivEnc, 0, iv.length-1);
+        System.arraycopy(iv, 0, ivDec, 0, iv.length-1);
+
+        System.out.println("Original : " + new String(message));
+
+        byte[] encrypted = blockEncrypt(message, ivEnc, 16);
+
+        System.out.println(Base64.getEncoder().encodeToString(encrypted));
+        System.out.println(new String(iv));
+        System.out.println(new String(ivEnc));
+
+        byte[] decrypted = blockDecrypt(encrypted, ivDec, message.length, 16);
+
+        System.out.println(new String(iv));
+        System.out.println(new String(ivEnc));
+        System.out.println("decrypted : " + new String(decrypted));
+    }
+
+    private static void printBytes(byte[] b) {
+        for ( byte i: b)
+            System.out.print(i + ", ");
+    }
+
+    public static byte[] blockEncrypt(byte[] message, byte[] iv, int blockSize ) throws Exception {
+
+        byte[] padded = zeroPad(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
+        byte[] outBytes = new byte[]{};
+
+        System.out.println("Encryption Padded bytes : " + padded.length);
+        int i=0;
+        while (i< padded.length){
+            byte[] block = splitBytes(i, i+blockSize-1, padded);
+            byte[] blockOut = encript_AES(block, iv);
+            outBytes = concatenateByteArrayList(Arrays.asList(outBytes, blockOut));
+            i+=blockSize;
+            incrementIV(iv);
+        }
+        System.out.println("Encryption final out length " + outBytes.length);
+        return outBytes;
+    }
+
+    public static byte[] blockDecrypt(byte[] message, byte[] iv, int messageSize, int blockSize ) throws Exception {
+
+        byte[] outBytes = new byte[]{};
+
+        int i=0;
+        System.out.println("Decryption Byte length " + message.length);
+
+        while (i< message.length){
+            byte[] block = splitBytes(i, i+blockSize-1, message);
+            byte[] blockOut = decript_AES(block, iv);
+            outBytes = concatenateByteArrayList(Arrays.asList(outBytes, blockOut));
+            i+=blockSize;
+            incrementIV(iv);
+        }
+
+        byte[] out = trimByteArray(outBytes, messageSize);
+
+        System.out.println("Decryption final out length " + outBytes.length);
+        System.out.println("Decryption final out length " + out.length);
+
+        return out;
+    }
+
+    /**
+     * Given byte array is encrypted with the 128 bit key array
+     * AES/ECB/NoPadding is used
+     * 1024 byte input gives 1024 byte output (As there is no padding)
+     * @param plainText
+     * @param key
+     * @return
+     * @throws Exception
+     */
+    public static byte[] encript_AES(byte[] plainText, byte[] key) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+        SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        return cipher.doFinal(plainText);
+    }
+
+    public static byte[] decript_AES(byte[] cypherText, byte[] key) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+        SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.DECRYPT_MODE, secretKey);
+        return cipher.doFinal(cypherText);
+    }
+    public static void incrementIV(byte[] iv) {
+
+        int i = iv.length-1;
+        while ( true ){
+            if ( i == 0 && iv[i] == Byte.MAX_VALUE){
+                iv[iv.length-1] = Byte.MIN_VALUE;
+                break;
+            } else if ( iv[i] == Byte.MAX_VALUE ){
+                i--;
+            }else{
+                iv[i] += 1;
+                break;
+            }
+        }
+    }
+
+    public static byte[] trimByteArray(byte[] input, int size){
+        int i=0;
+        byte[] out = new byte[size];
+        while ( i < size){
+            out[i] = input[i];
+            i++;
+        }
+
+        return out;
     }
 
 

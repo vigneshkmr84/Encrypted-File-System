@@ -78,11 +78,98 @@ public class EFS extends Utility{
         save_to_file(f , new File(fileName, "0"));
     }
 
-    public static byte[] splitBytes(byte[] array, int sp, int ep) {
+    public byte[] splitBytes(byte[] array, int sp, int ep) {
         return Arrays.copyOfRange(array, sp, ep+ 1);
     }
 
-    public static byte[] splitBytesWithSize(byte[] array, int sp, int len) {
+    public void incrementIV(byte[] iv) {
+
+        int i = iv.length-1;
+        while ( true ){
+            if ( i == 0 && iv[i] == Byte.MAX_VALUE){
+                iv[iv.length-1] = Byte.MIN_VALUE;
+                break;
+            } else if ( iv[i] == Byte.MAX_VALUE ){
+                i--;
+            }else{
+                iv[i] += 1;
+                break;
+            }
+        }
+    }
+
+    public byte[] trimByteArray(byte[] input, int size){
+        int i=0;
+        byte[] out = new byte[size];
+        while ( i < size){
+            out[i] = input[i];
+            i++;
+        }
+        return out;
+    }
+
+    public byte[] zeroPad(byte[] b, int outputByteSize){
+        byte[] out = new byte[outputByteSize];
+        System.arraycopy(b, 0, out, 0, b.length);
+        return out;
+    }
+
+    /**
+     * Encrypt a block of 16 bytes (128 bits) with incremental IV (Counter Mode)
+     * - Message is padded with null padding till the appropriate length is reached
+     * - Padded message bytes are then split into 16 byte chunks and encrypted with IV
+     * - IV is Bit incremented for each block
+     * - Encrypted blocks are concatenated
+     * - Since the encryption is AES/ECB/NOPADDING, input length will be equal to the output length
+     *
+     * @param message - Input message bytes
+     * @param iv - Initial IV
+     * @param blockSize - Block size for the split
+     * @return - encrypted final blocks
+     * @throws Exception
+     */
+    public byte[] blockEncrypt(byte[] message, byte[] iv, int blockSize ) throws Exception {
+
+        byte[] paddedBytes = zeroPad(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
+        byte[] outBytes = new byte[]{};
+
+        System.out.println("Encryption Padded bytes : " + paddedBytes.length);
+        int i=0;
+        while (i< paddedBytes.length){
+            byte[] block = splitBytes(paddedBytes, i, i+blockSize-1);
+            byte[] blockOut = encript_AES(block, iv);
+            outBytes = concatenateByteArrayList(Arrays.asList(outBytes, blockOut));
+            i+=blockSize;
+            incrementIV(iv);
+        }
+        System.out.println("Encryption final out length " + outBytes.length);
+        return outBytes;
+    }
+
+    public byte[] blockDecrypt(byte[] message, byte[] iv, int messageSize, int blockSize ) throws Exception {
+
+        byte[] outBytes = new byte[]{};
+
+        int i=0;
+        System.out.println("Decryption Byte length " + message.length);
+
+        while (i< message.length){
+            byte[] block = splitBytes(message,i, i+blockSize-1);
+            byte[] blockOut = decript_AES(block, iv);
+            outBytes = concatenateByteArrayList(Arrays.asList(outBytes, blockOut));
+            i+=blockSize;
+            incrementIV(iv);
+        }
+
+        byte[] out = trimByteArray(outBytes, messageSize);
+
+        System.out.println("Decryption final out length " + outBytes.length);
+        System.out.println("Decryption final out length " + out.length);
+
+        return out;
+    }
+
+    public byte[] splitBytesWithSize(byte[] array, int sp, int len) {
         return Arrays.copyOfRange(array, sp, sp + len);
     }
 
@@ -281,7 +368,9 @@ public class EFS extends Utility{
 //        byte[] iv = "2b7e151628aed2a6abf71589".getBytes();
         byte[] iv = getIV(file_name);
 
-//        System.out.println("IV : " + new String(iv));
+        byte[] ivDec = new byte[iv.length];
+        System.arraycopy(iv, 0, ivDec, 0, iv.length-1);
+
         int start_block = starting_position / Config.BLOCK_SIZE;
         int end_block = (starting_position + len - 1) / Config.BLOCK_SIZE;
 
@@ -292,7 +381,10 @@ public class EFS extends Utility{
             String blockFile = file_name + File.separator + i;
             byte[] f = read_from_file(new File(blockFile));
             System.out.println("Reading file : " + blockFile + ", length " + f.length);
-            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decript_AES(f, iv)));
+//            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decript_AES(f, iv)));
+
+            byte[] decrypted = blockDecrypt(f, iv);
+            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, ));
         }
         System.out.println(toReturn.length);
         int sp = Math.max(starting_position % Config.BLOCK_SIZE -1, 0);
