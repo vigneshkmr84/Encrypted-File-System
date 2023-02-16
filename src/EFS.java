@@ -15,6 +15,7 @@ public class EFS extends Utility{
 
     public static final int AES_BLOCK_SIZE = 128;
     public static final int ENC_BLOCK_SIZE = 16;
+    public static final int FILE_SIZE_BYTES = Config.BLOCK_SIZE - ENC_BLOCK_SIZE*2;
 
     public EFS(Editor e)
     {
@@ -67,7 +68,7 @@ public class EFS extends Utility{
             updatedMeta.append(s).append("\n");
         }
 
-        byte[] f = nullPadding(updatedMeta.toString().getBytes(), Config.BLOCK_SIZE);
+        byte[] f = nullPadding(updatedMeta.toString().getBytes(), FILE_SIZE_BYTES);
 
         System.out.println("Final Metadata Length : " + f.length);
         save_to_file(f , new File(fileName, "0"));
@@ -250,7 +251,7 @@ public class EFS extends Utility{
 
         // null padding till file size = 1024
         System.out.println("Meta file before padding : " + sb.length());
-        byte[] meta_file = nullPadding(sb.toString().getBytes(), Config.BLOCK_SIZE-1);
+        byte[] meta_file = nullPadding(sb.toString().getBytes(), FILE_SIZE_BYTES-1);
         System.out.println("Final size after padding : " + meta_file.length);
 
         // write to file
@@ -276,9 +277,9 @@ public class EFS extends Utility{
      * Function used to delete the chunk files
      * used by cut() and write() function
 
-     * @param file_name
-     * @param startBlock
-     * @param endBlock
+     * @param file_name - file name
+     * @param startBlock - starting block to delete
+     * @param endBlock - ending block to delete
      */
     public void removeChunkFiles(String file_name, int startBlock, int endBlock){
         while ( startBlock <= endBlock)
@@ -295,6 +296,20 @@ public class EFS extends Utility{
     }
 
 
+    /**
+     * HMAC Calculation Algorithm
+     * - If key size > 64 bytes, HASH it, else Zero Pad it to 64 bytes
+     * - Generate ipad-key by XOR of key and ipad byte (0x36) repeated till key's length
+     * - Generate opad-key by XOR of key and opad byte (5c) repeated till key's length
+     * - Hash 1 - Hash of ipadKey and message
+     * - Hash 2 - Hash of opadKey and Hash 1
+     * - Hash 2 is the HMAC of the message
+     *
+     * @param message - encrypted message bytes
+     * @param key - valid key
+     * @return
+     * @throws Exception
+     */
     public byte[] calculateHMAC(byte[] message, byte[] key) throws Exception {
 
         key = key.length > 64 ? Test.hash_SHA256(key): zeroPad(key, 64);
@@ -388,20 +403,19 @@ public class EFS extends Utility{
             throw new Exception();
         }
 
-//        byte[] iv = "2b7e151628aed2a6abf71589".getBytes();
         byte[] iv = getIV(file_name);
 
         byte[] ivDec = new byte[iv.length];
         System.arraycopy(iv, 0, ivDec, 0, iv.length-1);
 
-        int start_block = starting_position / Config.BLOCK_SIZE;
-        int end_block = (starting_position + len - 1) / Config.BLOCK_SIZE;
+        int start_block = starting_position / FILE_SIZE_BYTES;
+        int end_block = (starting_position + len - 1) / FILE_SIZE_BYTES;
 
         System.out.println("Read File Start Block : " + start_block + " End Block : " + end_block);
         byte[] toReturn = new byte[]{};
 
         // increment IV to the correct pointer
-        incrementIV(iv, start_block * (Config.BLOCK_SIZE / ENC_BLOCK_SIZE));
+        incrementIV(iv, start_block * (FILE_SIZE_BYTES / ENC_BLOCK_SIZE));
 
         // read the chunk files, decrypt it and append the bytes
         for ( int i= start_block + 1; i<= end_block +1; i++){
@@ -409,11 +423,11 @@ public class EFS extends Utility{
             byte[] f = read_from_file(new File(blockFile));
             System.out.println("Reading file : " + blockFile + ", length " + f.length);
 
-            byte[] decrypted = blockDecrypt(f, ivDec, Config.BLOCK_SIZE, ENC_BLOCK_SIZE);
+            byte[] decrypted = blockDecrypt(f, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decrypted));
         }
         System.out.println(toReturn.length);
-        int sp = Math.max(starting_position % Config.BLOCK_SIZE -1, 0);
+        int sp = Math.max(starting_position % FILE_SIZE_BYTES -1, 0);
 
         toReturn = splitBytes(toReturn, sp, sp + len - 1);
 
@@ -456,31 +470,33 @@ public class EFS extends Utility{
         }
 
         int len = toWrite.length();
-        int startFilePos = starting_position / Config.BLOCK_SIZE;
+        int startFilePos = starting_position / FILE_SIZE_BYTES;
 
         if ( file_length == 0){
-            System.out.println("No contents exists in the file");
+            System.out.println("No contents exists in the file. Creating File chunk 1");
             new File(file_name, "1").createNewFile();
         }
-//        byte[] iv = "2b7e151628aed2a6abf71589".getBytes();
+
         byte[] iv = getIV(file_name);
 
         byte[] ivEnc = new byte[iv.length];
         System.arraycopy(iv, 0, ivEnc, 0, iv.length-1);
 
         byte[] allBlocks;
-        int sp = startFilePos * Config.BLOCK_SIZE;
+        int sp = startFilePos * FILE_SIZE_BYTES;
         sp = Math.max(sp, 0);
         int ep = file_length - sp;
 
-//        incrementIV(iv, start_block * (Config.BLOCK_SIZE / ENC_BLOCK_SIZE));
-        incrementIV(ivEnc, sp * (Config.BLOCK_SIZE / ENC_BLOCK_SIZE));
+//        incrementIV(iv, start_block * (FILE_SIZE_BYTES / ENC_BLOCK_SIZE));
+        incrementIV(ivEnc, sp * (FILE_SIZE_BYTES / ENC_BLOCK_SIZE));
 
-        allBlocks = read(file_name, sp, ep, password);
+        // if starting and ending position == 0, then it's the first position to start writing
+        System.out.println(sp);
+        System.out.println(ep);
+        allBlocks = sp == ep ? "".getBytes() : read(file_name, sp, ep, password);
         String allBlocksString = new String(allBlocks);
 
-//        int splitPoint = Math.min(Config.BLOCK_SIZE, starting_position % Config.BLOCK_SIZE);
-        int splitPoint = starting_position % Config.BLOCK_SIZE-1;
+        int splitPoint = starting_position % FILE_SIZE_BYTES-1;
         if (splitPoint < 0 )
             splitPoint = 0;
 
@@ -495,7 +511,7 @@ public class EFS extends Utility{
         StringBuilder finalMessage = new StringBuilder(prefix + toWrite + suffix);
         System.out.println("Write Output length : " + finalMessage.length());
 
-        int paddedLength = (int)Math.ceil((double)finalMessage.length()/Config.BLOCK_SIZE) * Config.BLOCK_SIZE;
+        int paddedLength = (int)Math.ceil((double)finalMessage.length()/FILE_SIZE_BYTES) * FILE_SIZE_BYTES;
         System.out.println("Expected Padded Length : " + paddedLength);
 
 
@@ -504,7 +520,7 @@ public class EFS extends Utility{
         }
 
         int sf = startFilePos + 1;
-        int ef = finalMessage.length() / Config.BLOCK_SIZE;
+        int ef = finalMessage.length() / FILE_SIZE_BYTES;
 
         System.out.println("Start File for writing : " + sf);
         System.out.println("End File to write : " + ef);
@@ -519,18 +535,26 @@ public class EFS extends Utility{
         int i=0;
 
         while(sf <= ef){
-            byte[] chunkFile = finalMessage.substring(i, i+Config.BLOCK_SIZE).getBytes();
+            byte[] chunkFile = finalMessage.substring(i, i + FILE_SIZE_BYTES).getBytes();
             System.out.println("Chunk file " + sf + " length : " + chunkFile.length);
             byte[] enc = blockEncrypt(chunkFile, ivEnc, ENC_BLOCK_SIZE);
-            save_to_file(enc, new File(file_name, String.valueOf(sf++)));
-            i+=Config.BLOCK_SIZE;
+            byte[] hmac = calculateHMAC(enc, iv);
+            byte[] signedEncBytes = concatenateByteArrayList(Arrays.asList(enc, hmac));
+            save_to_file(signedEncBytes, new File(file_name, String.valueOf(sf++)));
+            i +=FILE_SIZE_BYTES;
         }
+
+        System.out.println("Successfully Written.");
     }
 
     /**
      * Steps to consider...:<p>
-  	 *  - verify password <p>
-     *  - check the equality of the computed and stored HMAC values for metadata and physical file blocks<p>
+  	 *  - verify password
+     *  - Find the length and the total file blocks available
+     *  - Each file, last 32 bytes are the HMAC, read each file and get the contents of them
+     *  - Calculate the HMAC of the remaining 992 bytes (1024 - 32) and check if they are equal to the pre-existing HMAC
+     *  - If any of the file doesn't match, return false
+     *  - Check also includes metadata file as well.
      */
     @Override
     public boolean check_integrity(String file_name, String password) throws Exception {
@@ -541,16 +565,19 @@ public class EFS extends Utility{
 
             int length = length(file_name, password);
             byte[] iv = getIV(file_name);
-            int totalFiles = (length) / 992;
+            int totalFiles = (int)Math.ceil( (double) length / 992);
+            System.out.println("Total files : " + totalFiles);
 
-            for ( int i=1; i<=totalFiles + 1; i++){
+            for ( int i=1; i<=totalFiles ; i++){
                 String f = file_name + File.separator + i;
                 byte[] msg = read_from_file(new File(f));
                 byte[] enc = splitBytes(msg, 0, 991);
                 String fileHMAC = new String(splitBytes(msg, 992, 1024));
                 String calculatedHMAC = new String(calculateHMAC(enc, iv));
-                if (calculatedHMAC.equals(fileHMAC))
+                if (calculatedHMAC.equals(fileHMAC)) {
+                    System.out.println("File " + f + ", status : invalid");
                     status++;
+                }
             }
 
         }else{
@@ -576,7 +603,7 @@ public class EFS extends Utility{
             System.out.println("Length too long than contents of the file");
             throw new Exception("Length too long than contents of the file");
         }
-        int end_block = (len) / Config.BLOCK_SIZE;
+        int end_block = (len) / FILE_SIZE_BYTES;
 
         byte[] iv = getIV(file_name);
 
@@ -591,18 +618,20 @@ public class EFS extends Utility{
         // decrypt the file and save as string
 //        byte[] dec = decript_AES(read_from_file(file), iv);
         byte[] msg = read_from_file(file);
-        byte[] dec = blockDecrypt(msg, ivDec, Config.BLOCK_SIZE, ENC_BLOCK_SIZE);
+        byte[] dec = blockDecrypt(msg, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
         String str = new String(dec);
 
-        str = str.substring(0, len - end_block * Config.BLOCK_SIZE);
-        while (str.length() < Config.BLOCK_SIZE) {
+        str = str.substring(0, len - end_block * FILE_SIZE_BYTES);
+        while (str.length() < FILE_SIZE_BYTES) {
             str += '\0';
         }
 
         // re-encrypt the stripped contents and save to file
 //        byte[] enc = encrypt_AES(str.getBytes(), ivEnc);
         byte[] enc = blockEncrypt(str.getBytes(), ivEnc, ENC_BLOCK_SIZE);
-        save_to_file(enc, file);
+        byte[] hmac = calculateHMAC(enc, iv);
+        byte[] signedEncBytes = concatenateByteArrayList(Arrays.asList(enc, hmac));
+        save_to_file(signedEncBytes, file);
 
         int cur = end_block + 2;
         file = new File(root, Integer.toString(cur));
