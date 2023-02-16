@@ -134,6 +134,8 @@ public class EFS extends Utility{
      */
     public byte[] blockEncrypt(byte[] message, byte[] iv, int blockSize ) throws Exception {
 
+        // Zero padding till message reaches a multiple of the block size
+        // 16 for AES
         byte[] paddedBytes = zeroPad(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
         byte[] outBytes = new byte[]{};
 
@@ -494,7 +496,6 @@ public class EFS extends Utility{
         while(sf <= ef){
             byte[] chunkFile = finalMessage.substring(i, i+Config.BLOCK_SIZE).getBytes();
             System.out.println("Chunk file " + sf + " length : " + chunkFile.length);
-//            byte[] enc = encript_AES(chunkFile, iv);
             byte[] enc = blockEncrypt(chunkFile, ivEnc, ENC_BLOCK_SIZE);
             save_to_file(enc, new File(file_name, String.valueOf(sf++)));
             i+=Config.BLOCK_SIZE;
@@ -529,15 +530,25 @@ public class EFS extends Utility{
         int file_length = length(file_name, password);
 
         if (len > file_length) {
-            throw new Exception();
+            System.out.println("Length too long than contents of the file");
+            throw new Exception("Length too long than contents of the file");
         }
         int end_block = (len) / Config.BLOCK_SIZE;
 
         byte[] iv = getIV(file_name);
+
+        byte[] ivDec = new byte[iv.length];
+        System.arraycopy(iv, 0, ivDec, 0, iv.length-1);
+
+        byte[] ivEnc = new byte[iv.length];
+        System.arraycopy(iv, 0, ivEnc, 0, iv.length-1);
+
         File file = new File(root, Integer.toString(end_block + 1));
 
         // decrypt the file and save as string
-        byte[] dec = decript_AES(read_from_file(file), iv);
+//        byte[] dec = decript_AES(read_from_file(file), iv);
+        byte[] msg = read_from_file(file);
+        byte[] dec = blockDecrypt(msg, ivDec, Config.BLOCK_SIZE, ENC_BLOCK_SIZE);
         String str = new String(dec);
 
         str = str.substring(0, len - end_block * Config.BLOCK_SIZE);
@@ -545,8 +556,9 @@ public class EFS extends Utility{
             str += '\0';
         }
 
-        // re-encrypt the contents ans save to file
-        byte[] enc = encript_AES(str.getBytes(), iv);
+        // re-encrypt the stripped contents and save to file
+//        byte[] enc = encrypt_AES(str.getBytes(), ivEnc);
+        byte[] enc = blockEncrypt(str.getBytes(), ivEnc, ENC_BLOCK_SIZE);
         save_to_file(enc, file);
 
         int cur = end_block + 2;
@@ -556,23 +568,7 @@ public class EFS extends Utility{
             cur++;
         }
 
-        //update meta data
-        /*String s = byteArray2String(read_from_file(new File(root, "0")));
-        String[] strs = s.split("\n");
-        strs[0] = Integer.toString(len);
-        String toWrite = "";
-        for (String t : strs) {
-            toWrite += t + "\n";
-        }
-
-        System.out.println(toWrite);
-        while (toWrite.length() < Config.BLOCK_SIZE) {
-            toWrite += '\0';
-        }
-        save_to_file(toWrite.getBytes(), new File(root, "0"));*/
-
         updateFileLength(file_name, len);
-
     }
   
 }

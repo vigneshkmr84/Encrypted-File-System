@@ -14,9 +14,11 @@ public class TestCase2 {
 
 
         byte[] toWrite = "test writing".getBytes();
-        efs.write(fileName, 3, toWrite, password);
+//        efs.write(fileName, 3, toWrite, password);
 
-        byte[] readOut = efs.read(fileName, 0, 50, password);
+//        efs.cut(fileName, 100, password);
+
+        byte[] readOut = efs.read(fileName, 0, 100, password);
         System.out.println(new String(readOut));
     }
 }
