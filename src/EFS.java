@@ -2,7 +2,6 @@
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -54,8 +53,7 @@ public class EFS extends Utility{
      */
     public void updateFileLength(String fileName, int length) throws Exception {
         String metaFile = fileName + File.separator + "0";
-//        String len = new String(Base64.getDecoder().decode(lenBase64));
-//        int curLength = Integer.parseInt(len);
+
         String newLength = String.valueOf(length * getScore(fileName));
         String newLenBase64 = Base64.getEncoder().encodeToString(newLength.getBytes());
         String[] contents = new String(read_from_file(new File(metaFile))).split("\n");
@@ -68,10 +66,6 @@ public class EFS extends Utility{
         for ( String s: contents){
             updatedMeta.append(s).append("\n");
         }
-
-        /*while ( updatedMeta.length() < Config.BLOCK_SIZE) {
-            updatedMeta.append("\0");
-        }*/
 
         byte[] f = nullPadding(updatedMeta.toString().getBytes(), Config.BLOCK_SIZE);
 
@@ -252,14 +246,6 @@ public class EFS extends Utility{
 
         System.out.println("line 3,4,5 length : " + (line3.length() + line4.length() + line5.length()));
 
-//        int length = sb.toString().length();
-//        System.out.println("initial length : " + length);
-
-        // padding for remaining bytes
-        /*while ( sb.toString().length() + 1 <= Config.BLOCK_SIZE){
-            sb.append("\0");
-        }*/
-
         // null padding till file size = 1024
         System.out.println("Meta file before padding : " + sb.length());
         byte[] meta_file = nullPadding(sb.toString().getBytes(), Config.BLOCK_SIZE-1);
@@ -395,7 +381,6 @@ public class EFS extends Utility{
             String blockFile = file_name + File.separator + i;
             byte[] f = read_from_file(new File(blockFile));
             System.out.println("Reading file : " + blockFile + ", length " + f.length);
-//            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decrypt_AES(f, iv)));
 
             byte[] decrypted = blockDecrypt(f, ivDec, Config.BLOCK_SIZE, ENC_BLOCK_SIZE);
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decrypted));
@@ -434,7 +419,6 @@ public class EFS extends Utility{
 
         String toWrite = byteArray2String(content);
 
-        File rooFolder = new File(file_name);
         int file_length = length(file_name, password);
         System.out.println("File length " + file_length);
 
@@ -446,8 +430,6 @@ public class EFS extends Utility{
 
         int len = toWrite.length();
         int startFilePos = starting_position / Config.BLOCK_SIZE;
-        int totalBlocks = (int)Math.ceil((double)(file_length + len) / Config.BLOCK_SIZE);
-        int endFile = (starting_position + len) / Config.BLOCK_SIZE;
 
         if ( file_length == 0){
             System.out.println("No contents exists in the file");
