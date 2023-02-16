@@ -15,6 +15,7 @@ import java.util.List;
 public class EFS extends Utility{
 
     public static final int AES_BLOCK_SIZE = 128;
+    public static final int ENC_BLOCK_SIZE = 16;
 
     public EFS(Editor e)
     {
@@ -82,19 +83,28 @@ public class EFS extends Utility{
         return Arrays.copyOfRange(array, sp, ep+ 1);
     }
 
-    public void incrementIV(byte[] iv) {
+    /**
+     * Increment the given iv by given number of bits
+     * @param iv
+     * @param incrementBy
+     */
+    public void incrementIV(byte[] iv, int incrementBy) {
 
-        int i = iv.length-1;
-        while ( true ){
-            if ( i == 0 && iv[i] == Byte.MAX_VALUE){
-                iv[iv.length-1] = Byte.MIN_VALUE;
-                break;
-            } else if ( iv[i] == Byte.MAX_VALUE ){
-                i--;
-            }else{
-                iv[i] += 1;
-                break;
+        int j = 0;
+        while (j < incrementBy) {
+            int i = iv.length - 1;
+            while (true) {
+                if (i == 0 && iv[i] == Byte.MAX_VALUE) {
+                    iv[iv.length - 1] = Byte.MIN_VALUE;
+                    break;
+                } else if (iv[i] == Byte.MAX_VALUE) {
+                    i--;
+                } else {
+                    iv[i] += 1;
+                    break;
+                }
             }
+            j++;
         }
     }
 
@@ -140,7 +150,7 @@ public class EFS extends Utility{
             byte[] blockOut = encript_AES(block, iv);
             outBytes = concatenateByteArrayList(Arrays.asList(outBytes, blockOut));
             i+=blockSize;
-            incrementIV(iv);
+            incrementIV(iv, 1);
         }
         System.out.println("Encryption final out length " + outBytes.length);
         return outBytes;
@@ -158,7 +168,7 @@ public class EFS extends Utility{
             byte[] blockOut = decript_AES(block, iv);
             outBytes = concatenateByteArrayList(Arrays.asList(outBytes, blockOut));
             i+=blockSize;
-            incrementIV(iv);
+            incrementIV(iv, 1);
         }
 
         byte[] out = trimByteArray(outBytes, messageSize);
@@ -377,14 +387,18 @@ public class EFS extends Utility{
         System.out.println("Read File Start Block : " + start_block + " End Block : " + end_block);
         byte[] toReturn = new byte[]{};
 
+        // increment IV to the correct pointer
+        incrementIV(iv, start_block * (Config.BLOCK_SIZE / ENC_BLOCK_SIZE));
+
+        // read the chunk files, decrypt it and append the bytes
         for ( int i= start_block + 1; i<= end_block +1; i++){
             String blockFile = file_name + File.separator + i;
             byte[] f = read_from_file(new File(blockFile));
             System.out.println("Reading file : " + blockFile + ", length " + f.length);
-//            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decript_AES(f, iv)));
+//            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decrypt_AES(f, iv)));
 
-            byte[] decrypted = blockDecrypt(f, iv);
-            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, ));
+            byte[] decrypted = blockDecrypt(f, ivDec, Config.BLOCK_SIZE, ENC_BLOCK_SIZE);
+            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decrypted));
         }
         System.out.println(toReturn.length);
         int sp = Math.max(starting_position % Config.BLOCK_SIZE -1, 0);
@@ -393,23 +407,6 @@ public class EFS extends Utility{
 
         return toReturn;
 
-    }
-
-    public byte[] blockEncrypt(byte[] message, byte[] iv) throws Exception {
-
-        // contains 128 byte split arrays
-        List<byte[]> byteArrayList = new ArrayList<>();
-
-        for ( int i=0; i< message.length; i+=AES_BLOCK_SIZE )
-            byteArrayList.add(splitBytes(message, i, i+AES_BLOCK_SIZE-1));
-
-        byte[] encryptedMessage = new byte[]{};
-        for ( byte[] block : byteArrayList) {
-            byte[] encryptedBlock = encript_AES(block, iv);
-            concatenateByteArrayList(Arrays.asList(encryptedMessage, encryptedBlock));
-        }
-
-        return encryptedMessage;
     }
 
     /**
@@ -459,33 +456,28 @@ public class EFS extends Utility{
 //        byte[] iv = "2b7e151628aed2a6abf71589".getBytes();
         byte[] iv = getIV(file_name);
 
-        byte[] allBlocks = new byte[]{};
-        /*for (int i = start_block + 1; i <= totalBlocks; i++) {
-            String blockFile = file_name + File.separator + i;
-            byte[] contents = read(file_name, start_block * Config.BLOCK_SIZE, end_block*Config.BLOCK_SIZE, password);
-            byte[] message = decript_AES(contents, getIV(file_name));
+        byte[] ivEnc = new byte[iv.length];
+        System.arraycopy(iv, 0, ivEnc, 0, iv.length-1);
 
-            allBlocks = concatenateByteArrayList(Arrays.asList(allBlocks, message));
-//            new File(blockFile).delete();
-        }*/
-
+        byte[] allBlocks;
         int sp = startFilePos * Config.BLOCK_SIZE;
         sp = Math.max(sp, 0);
         int ep = file_length - sp;
 
-        byte[] contents = read(file_name, sp, ep, password);
+//        incrementIV(iv, start_block * (Config.BLOCK_SIZE / ENC_BLOCK_SIZE));
+        incrementIV(ivEnc, sp * (Config.BLOCK_SIZE / ENC_BLOCK_SIZE));
 
-        allBlocks = contents;
+        allBlocks = read(file_name, sp, ep, password);
         String allBlocksString = new String(allBlocks);
 
-//        int breakPoint = Math.min(Config.BLOCK_SIZE, starting_position % Config.BLOCK_SIZE);
-        int breakPoint = starting_position % Config.BLOCK_SIZE-1;
-        if (breakPoint < 0 )
-            breakPoint = 0;
+//        int splitPoint = Math.min(Config.BLOCK_SIZE, starting_position % Config.BLOCK_SIZE);
+        int splitPoint = starting_position % Config.BLOCK_SIZE-1;
+        if (splitPoint < 0 )
+            splitPoint = 0;
 
         System.out.println("Total READ Length : " + allBlocksString.length());
-        String prefix = allBlocksString.substring(0, breakPoint);
-        String suffix = allBlocksString.substring(breakPoint);
+        String prefix = allBlocksString.substring(0, splitPoint);
+        String suffix = allBlocksString.substring(splitPoint);
 
         System.out.println("Prefix Length " + prefix.length());
         System.out.println("Suffix Length " + suffix.length());
@@ -502,26 +494,27 @@ public class EFS extends Utility{
             finalMessage.append("\0");
         }
 
-        int sb = startFilePos + 1;
-        int eb = finalMessage.length() / Config.BLOCK_SIZE;
+        int sf = startFilePos + 1;
+        int ef = finalMessage.length() / Config.BLOCK_SIZE;
 
-        System.out.println("Start Block for writing : " + sb);
-        System.out.println("End block to write : " + eb);
+        System.out.println("Start File for writing : " + sf);
+        System.out.println("End File to write : " + ef);
         System.out.println("Actual Padded Length : " + finalMessage.length());
         System.out.println("Write Final Output : " + finalMessage);
 
         int updated_file_len = finalMessage.length();
 
         updateFileLength(file_name, updated_file_len);
-        removeChunkFiles(file_name, sb, eb);
+        removeChunkFiles(file_name, sf, ef);
 
         int i=0;
 
-        while(sb <= eb){
+        while(sf <= ef){
             byte[] chunkFile = finalMessage.substring(i, i+Config.BLOCK_SIZE).getBytes();
-            System.out.println("Chunk file " + sb + " length : " + chunkFile.length);
-            byte[] enc = encript_AES(chunkFile, iv);
-            save_to_file(enc, new File(file_name, String.valueOf(sb++)));
+            System.out.println("Chunk file " + sf + " length : " + chunkFile.length);
+//            byte[] enc = encript_AES(chunkFile, iv);
+            byte[] enc = blockEncrypt(chunkFile, ivEnc, ENC_BLOCK_SIZE);
+            save_to_file(enc, new File(file_name, String.valueOf(sf++)));
             i+=Config.BLOCK_SIZE;
         }
     }

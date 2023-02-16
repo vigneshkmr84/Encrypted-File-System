@@ -8,7 +8,7 @@ public class TestCase{
         String fileName = "/Users/vigneshthirunavukkarasu/Info-sec/sample.txt";
 //        String password = "2b7e151628aed2a6abf71589";
         String userName = "vignesh";
-        String password = "pass";
+        String password = "password";
         /*boolean passwordCheck = efs.verifyPassword(password, fileName);
         System.out.println("Password check : " + passwordCheck);
         System.out.println("Username check : " + (Objects.equals(efs.findUser(fileName), "vignesh")));
