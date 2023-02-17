@@ -314,7 +314,7 @@ public class EFS extends Utility{
      */
     public byte[] calculateHMAC(byte[] message, byte[] key) throws Exception {
 
-        key = key.length > 64 ? Test.hash_SHA256(key): zeroPad(key, 64);
+        key = key.length > 64 ? hash_SHA256(key): zeroPad(key, 64);
 
         byte[] ipad = new byte[]{0x36};
         byte[] opad = new byte[]{0x5c};
