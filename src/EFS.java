@@ -235,6 +235,7 @@ public class EFS extends Utility{
         byte[] passBytes = password.getBytes(StandardCharsets.UTF_8);
         byte[] hashedPass = getPasswordHash(saltBytes, passBytes);
 
+//        byte[] lenEnc = encript_AES("0".getBytes(), ivBytes);
         String line1 = Base64.getEncoder().encodeToString("0".getBytes());
         String line2 = Base64.getEncoder().encodeToString(user_name.getBytes());
         String line3 = Base64.getEncoder().encodeToString(randomPadding(hashedPass, AES_BLOCK_SIZE));
@@ -245,10 +246,11 @@ public class EFS extends Utility{
                 .append(line2).append(System.lineSeparator())
                 .append(line3).append(System.lineSeparator())
                 .append(line4).append(System.lineSeparator())
-                .append(line5).append(System.lineSeparator());
+                ;
 
-        System.out.println("line 3,4,5 length : " + (line3.length() + line4.length() + line5.length()));
 
+        byte[] hmac = calculateHMAC(sb.toString().getBytes(), ivBytes);
+        sb.append(new String(hmac));
         // null padding till file size = 1024
         System.out.println("Meta file before padding : " + sb.length());
         byte[] meta_file = nullPadding(sb.toString().getBytes(), FILE_SIZE_BYTES-1);
@@ -568,7 +570,7 @@ public class EFS extends Utility{
             int totalFiles = (int)Math.ceil( (double) length / 992);
             System.out.println("Total files : " + totalFiles);
 
-            for ( int i=1; i<=totalFiles ; i++){
+            for ( int i=0; i<=totalFiles ; i++){
                 String f = file_name + File.separator + i;
                 byte[] msg = read_from_file(new File(f));
                 byte[] enc = splitBytes(msg, 0, 991);
