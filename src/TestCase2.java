@@ -1,4 +1,9 @@
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Arrays;
+
 public class TestCase2 {
 
     public static void main(String[] args) throws Exception {
@@ -9,18 +14,37 @@ public class TestCase2 {
         String fileName = "/Users/vigneshthirunavukkarasu/Info-sec/hmac.txt";
 
         System.out.println(efs.getScore(fileName));
-        String originalMessage = "wkGzcan0NzzqKZoa53tP9B2jWoBWo9VFFdfTkphr9RMldAmNRrWd5qTo4twEva8asF9HFBEzjIyUN6Mq6c76JzaMRVNthBCo9TXLyJKjtE5TzqmHzBrd88AKW9juc4LJZcpyHNvSymT8n0M8W5AzyS1hDfVcBMKPaJDYN9fCRuDZT24HED84gAsBbEeEthmGATBm7SsPeOjRP8Y5A2nw8lfyIfdNfjQzWOYqCTIiGl0nQvZeF2d1i5uuJhRQKba5MNfpeA2Is8IfNO3nePLytpqssAv8Hk0j98e1wnHvAV751pAjLJHGg19JNcIW5O3Gk8eHIB8OY8ZplpVVf0UPhsbNUgSV5Mxy04z6JueFxFOS0Lq3GEf4W900KxMuInCHgswlIVqy3FDTQzzKlasts6t5YqmL42e74cCheTHaHdFK8jJbeRzbctMGSph9IUAK6k06FJ1FajcrZFbavWtDxLH0tRyFkI0GKKD0tJVgLo7BPm5ixXwxx9xJO7ZgPk7efBWmQYBF7yCb4Z1P4C7aVMunpS6JVn3mSBYPK63lfPYaom4S5lJCj0C6NdXAV8BsuZzfEmg0JS8J8cpHjtOjJDMBXgpr2QmWKr7U8iImDAZdpFw6K9c1jRbW9WTyAg8al05dYItbAzCSecBBx6qKewQMBzo0zSoYtcdrK4cRcrgWKpclRuOmS52fijrYWZHgX2kb0yDIOCwSawPfE6kkovEPS3ainYXPXG1KkTe93ua09EsGuojMaIRNretWMNggdgF9TBa79S7WkJVSLmKJMgQ1bYUQ3UJusPhmGNXoOo2xn0YGbNwmF59kNtEosJrP0vZMQfUl4xg1i0GdeUbF9d5MBKRuYN3iFZrieMZHTMtKp83ZG0zMYXl4EvPI8dXLssUbhFGBHlrBSczhOK4NX5XfLuyuyeNSGMJuxOxpxjBYltQne4REpkURz5rHm2HdVe8CY9583NvEyAjOOIFNt1QABIwuvb40i6eQUaY28SAlMgFKjlqY1n7TduYt9cwi";
+        byte[] file2 = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus eu dui faucibus, suscipit quam vel, rhoncus velit. Sed congue, libero vel posuere luctus, risus nunc euismod quam, ut bibendum augue ipsum vel lectus. Morbi finibus, sapien nec feugiat elementum, enim nibh bibendum tortor, vel maximus dolor arcu vitae nulla. In auctor lorem sit amet risus vestibulum, ut consectetur sapien fringilla. Donec hendrerit convallis neque, a ultrices mi cursus nec. Aenean maximus tortor vel purus congue, ut consequat risus varius. Nulla bibendum, ipsum in bibendum viverra, enim metus tempor odio, eu pretium ipsum odio eget ex. Fusce suscipit, mi ut consectetur euismod, sem lorem laoreet mi, sed vestibulum ex arcu non turpis. In vulputate eget nisl vel sodales. Suspendisse eget enim rutrum, ultricies odio eu, efficitur lectus. Sed sed mauris aliquet, finibus risus eget, suscipit massa. Nullam id lectus id odio lacinia2sapien luctus malesuada. Etiam at metus non mauris vivemollis.molesti2".getBytes();
+        byte[] file3 = "The autumn leaves were falling gently from the trees, blanketing the ground with a tapestry of red, gold, and orange. The cool breeze carried the scent of woodsmoke and apple cider, signaling the arrival of fall. In the distance, a flock of geese honked overhead as they made their way south for the winter. The sky was a brilliant shade of blue, with wispy white clouds drifting lazily by. As I walked through the park, I felt a sense of peace and tranquility wash over me. It was a perfect day to be alive and to savor the beauty of nature.".getBytes();
 //        efs.create(fileName, userName, password);
+        System.out.println("Original length " + file3.length);
+        byte[] iv = efs.getIV(fileName);
+        byte[] ivEnc = new byte[iv.length];
+        System.arraycopy(iv, 0, ivEnc, 0, iv.length-1);
 
+        System.out.println(Arrays.toString(iv));
+        System.out.println(Arrays.toString(ivEnc));
+        efs.incrementIV(ivEnc, 62*2);
 
-        byte[] toWrite = "test writing".getBytes();
-//        efs.write(fileName, 3, toWrite, password);
+//        System.out.println("Bit diff " + bitDifference(iv, ivEnc));
 
-//        efs.cut(fileName, 100, password);
+        byte[] padded = efs.zeroPad(file3, 1023);
+        System.out.println("Padded length : " + padded.length);
+        byte[] enc = efs.blockEncrypt(padded, ivEnc, 16);
 
-        byte[] readOut = efs.read(fileName, 0, 39, password);
-        System.out.println(new String(readOut));
-
-        System.out.println("Integrity : " + efs.check_integrity(fileName, password));
+        save_to_file(enc, fileName + File.separator + "3");
     }
+
+
+    public static void save_to_file(byte[] message, String fileName){
+
+        try (FileOutputStream fos = new FileOutputStream(fileName)) {
+            fos.write(message);
+            System.out.println("Bytes written to file.");
+        } catch (IOException e) {
+            System.out.println("Error writing bytes to file.");
+            e.printStackTrace();
+        }
+    }
+
 }

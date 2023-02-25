@@ -26,16 +26,20 @@ public class TestCase{
 
 
 //        efs.write(fileName, 0, text.getBytes(), password);
-//        efs.over_write(fileName, 905, "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.".getBytes(), password);
-//        efs.over_write(fileName, 0, "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.".getBytes(), password);
-//        efs.over_write(fileName, 30, "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.".getBytes(), password);
-//        efs.over_write(fileName, 992, "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.".getBytes(), password);
+
+        String over_write = "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.";
+        efs.over_write(fileName, 0, over_write.getBytes(), password);
+//        efs.over_write(fileName, 30, over_write.getBytes(), password);
+//        efs.over_write(fileName, 905, over_write.getBytes(), password);
+//        efs.over_write(fileName, 1000, over_write.getBytes(), password);
+//        efs.over_write(fileName, 2100, over_write.getBytes(), password);
+//        efs.over_write(fileName, 2200, over_write.getBytes(), password);
 
         // Agreed joy vanity regret met may ladies oppose who. Mile fail as left as hard eyes. Meet made call in mean four year it to. Prospect so branched wondered sensible of up. For gay consisted resolving pronounce sportsman saw discovery not. Northward or household as conveying we earnestly believing. No in up contrasted discretion inhabiting excellence. Entreaties we collecting unpleasant at everything conviction. Perpetual sincerity out suspected necessary one but provision satisfied. Respect nothing use set waiting pursuit nay you looking. If on prevailed concluded ye abilities. Address say you new but minuter greater. Do denied agreed in innate. Can and middletons thoroughly themselves him. Tolerably sportsmen belonging in september no am immediate newspaper. Theirs expect dinner it pretty indeed having no of. Principle september she conveying did eat may extensive. On then sake home is am leaOVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.o
-        byte[] contents = efs.read_new(fileName, 0, 50, password);
-        String out = new String(contents);
-        System.out.println("Read Final Output : " + out);
-        System.out.println("Read Output length: " + contents.length);
+//        byte[] contents = efs.read_new(fileName, 990, 1000, password);
+//        String out = new String(contents);
+//        System.out.println("Read Final Output : " + out);
+//        System.out.println("Read Output length: " + contents.length);
 
 
         /*String readFile = "/Users/vigneshthirunavukkarasu/Info-sec/hmac.txt";
