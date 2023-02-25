@@ -6,7 +6,7 @@ public class TestCase{
     public static void main(String[] args) throws Exception {
 
         EFS efs = new EFS(null);
-        String fileName = "/Users/vigneshthirunavukkarasu/Info-sec/fi.txt";
+        String fileName = "/Users/vigneshthirunavukkarasu/Info-sec/hmac.txt";
 //        String password = "2b7e151628aed2a6abf71589";
         String userName = "vignesh";
         String password = "password";
@@ -15,14 +15,27 @@ public class TestCase{
         System.out.println("Username check : " + (Objects.equals(efs.findUser(fileName), "vignesh")));
         System.out.println("Length check : " + (efs.length(fileName, password) == 48));*/
 
-        String text = "Agreed joy vanity regret met may ladies oppose who. Mile fail as left as hard eyes. Meet made call in mean four year it to. Prospect so branched wondered sensible of up. For gay consisted resolving pronounce sportsman saw discovery not. Northward or household as conveying we earnestly believing. No in up contrasted discretion inhabiting excellence. Entreaties we collecting unpleasant at everything conviction. Perpetual sincerity out suspected necessary one but provision satisfied. Respect nothing use set waiting pursuit nay you looking. If on prevailed concluded ye abilities. Address say you new but minuter greater. Do denied agreed in innate. Can and middletons thoroughly themselves him. Tolerably sportsmen belonging in september no am immediate newspaper. Theirs expect dinner it pretty indeed having no of. Principle september she conveying did eat may extensive. On then sake home is am leaf. Of suspicion do departure at extremely he believing. Do know said mind do rent they oh hope of. General Agreed joy ma";
+//        String text = "Agreed joy vanity regret met may ladies oppose who. Mile fail as left as hard eyes. Meet made call in mean four year it to. Prospect so branched wondered sensible of up. For gay consisted resolving pronounce sportsman saw discovery not. Northward or household as conveying we earnestly believing. No in up contrasted discretion inhabiting excellence. Entreaties we collecting unpleasant at everything conviction. Perpetual sincerity out suspected necessary one but provision satisfied. Respect nothing use set waiting pursuit nay you looking. If on prevailed concluded ye abilities. Address say you new but minuter greater. Do denied agreed in innate. Can and middletons thoroughly themselves him. Tolerably sportsmen belonging in september no am immediate newspaper. Theirs expect dinner it pretty indeed having no of. Principle september she conveying did eat may extensive. On then sake home is am leaf. Of suspicion do departure at extremely he believing. Do know said mind do rent they o";
+        String text = "this is a sample small text of short length of less than 100 characters.";
 
         System.out.println("Score : " + efs.getScore(fileName));
         System.out.println("Length of text : " + text.length());
 
-        new File(fileName).delete();
-        efs.create(fileName, userName, password);
+//        efs.create(fileName, userName, password);
 
+
+
+//        efs.write(fileName, 0, text.getBytes(), password);
+//        efs.over_write(fileName, 905, "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.".getBytes(), password);
+//        efs.over_write(fileName, 0, "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.".getBytes(), password);
+//        efs.over_write(fileName, 30, "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.".getBytes(), password);
+//        efs.over_write(fileName, 992, "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.".getBytes(), password);
+
+        // Agreed joy vanity regret met may ladies oppose who. Mile fail as left as hard eyes. Meet made call in mean four year it to. Prospect so branched wondered sensible of up. For gay consisted resolving pronounce sportsman saw discovery not. Northward or household as conveying we earnestly believing. No in up contrasted discretion inhabiting excellence. Entreaties we collecting unpleasant at everything conviction. Perpetual sincerity out suspected necessary one but provision satisfied. Respect nothing use set waiting pursuit nay you looking. If on prevailed concluded ye abilities. Address say you new but minuter greater. Do denied agreed in innate. Can and middletons thoroughly themselves him. Tolerably sportsmen belonging in september no am immediate newspaper. Theirs expect dinner it pretty indeed having no of. Principle september she conveying did eat may extensive. On then sake home is am leaOVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.o
+        byte[] contents = efs.read_new(fileName, 0, 50, password);
+        String out = new String(contents);
+        System.out.println("Read Final Output : " + out);
+        System.out.println("Read Output length: " + contents.length);
 
 
         /*String readFile = "/Users/vigneshthirunavukkarasu/Info-sec/hmac.txt";
@@ -41,7 +54,7 @@ public class TestCase{
 
         efs.write(fileName, 30, additionalText.getBytes(), password);*/
 
-        System.out.println( "File integral " + efs.check_integrity(fileName, password));
+//        System.out.println( "File integral " + efs.check_integrity(fileName, password));
 
 
     }

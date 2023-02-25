@@ -47,8 +47,7 @@ public class Sample extends Utility {
     @Override
     public byte[] read(String file_name, int starting_position, int len, String password) throws Exception {
         File root = new File(file_name);
-//        int file_length = length(file_name, password);
-        int file_length = 1216;
+        int file_length = length(file_name, password);
         if (starting_position + len > file_length) {
             throw new Exception();
         }
