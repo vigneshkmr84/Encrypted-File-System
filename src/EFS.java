@@ -145,6 +145,14 @@ public class EFS extends Utility{
         // 16 for AES
 //        byte[] paddedBytes = zeroPad(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);byte[] paddedBytes = zeroPad(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
         byte[] paddedBytes = nullPadding(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
+
+        /*int paddingLength = (int) Math.ceil((double) message.length / blockSize) * blockSize;
+        byte[] paddedBytes;
+        if (message.length == paddingLength)
+            paddedBytes = message;
+        else
+            paddedBytes = nullPadding(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
+        */
         byte[] outBytes = new byte[]{};
 
         System.out.println("Encryption Padded bytes : " + paddedBytes.length);
@@ -220,11 +228,10 @@ public class EFS extends Utility{
         return splitBytes(data, 16, 31);
     }
 
-    // Null padding to the given length
     public byte[] nullPadding(byte[] msg, int len){
         StringBuilder sb = new StringBuilder(new String(msg));
 
-        while(sb.length() <= len){
+        while(sb.length() < len){
             sb.append("\0");
         }
 
@@ -333,6 +340,17 @@ public class EFS extends Utility{
 
         return Utility.hash_SHA256(concatenateByteArrayList(Arrays.asList(opadKey, firstHash)));
     }
+
+    // returns the greatest number multiple of roundToMultiple
+    public int roundNumber(int number, int roundToMultiple){
+
+        int remainder = number % roundToMultiple;
+        if ( remainder == 0)
+            return number;
+        else
+            return number + (roundToMultiple - remainder);
+    }
+
 
     /**
      * End Helper functions
@@ -532,7 +550,7 @@ public class EFS extends Utility{
      * @param password - password for the file
      * @throws Exception
      */
-    @Override
+    /*@Override
     public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
 
         String toWrite = byteArray2String(content);
@@ -626,8 +644,9 @@ public class EFS extends Utility{
 
         System.out.println("Successfully Written.");
     }
-
-    public void over_write(String file_name, int starting_position, byte[] content, String password) throws Exception {
+*/
+    @Override
+    public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
 
         int file_length = length(file_name, password);
         System.out.println("File length " + file_length);
@@ -645,7 +664,9 @@ public class EFS extends Utility{
         int startFileBlock = starting_position / FILE_SIZE_BYTES;
 
         // FILE_SIZE_BYTES added to ensure that the block is covered till 992 bytes
-        int endFileBlock = (ending_position + FILE_SIZE_BYTES) / FILE_SIZE_BYTES;
+//        int endFileBlock = (ending_position + FILE_SIZE_BYTES) / FILE_SIZE_BYTES;
+        int endFileBlock = roundNumber(ending_position, FILE_SIZE_BYTES) / FILE_SIZE_BYTES;
+
 
         if ( file_length == 0){
             System.out.println("No contents exists in the file. Creating File chunk 1");
@@ -681,7 +702,7 @@ public class EFS extends Utility{
 
         byte[] decContents = read_new(file_name, readFrom, readLength, password);
         System.out.println("READ String : " + new String(decContents));
-        System.out.println("Dec Length " + decContents.length);
+        System.out.println("READ Length " + decContents.length);
         int suffixEndPoint = Math.min(decContents.length-1, readTill);
 
         // if starting position == 0, then there will be no prefix.
@@ -711,10 +732,12 @@ public class EFS extends Utility{
         int updatedLength = updatedBytes.length;
 
         System.out.println("Updated length before padding " + updatedLength);
-        int toPadLength = updatedLength % FILE_SIZE_BYTES == 0 ? updatedLength : (updatedLength/FILE_SIZE_BYTES + 1) * FILE_SIZE_BYTES;
+//        int toPadLength = updatedLength % FILE_SIZE_BYTES == 0 ? updatedLength : (updatedLength/FILE_SIZE_BYTES + 1) * FILE_SIZE_BYTES;
+        int toPadLength = roundNumber(updatedLength, FILE_SIZE_BYTES);
 
 //        System.out.println("Updated String before padding : " + new String(updatedBytes));
 
+        System.out.println("Null padding to Length : " + toPadLength);
         updatedBytes = nullPadding(updatedBytes, toPadLength-1);
         System.out.println("Updated string after padding : " + new String(updatedBytes));
         System.out.println("Final padded String length : " + updatedBytes.length);
@@ -724,12 +747,13 @@ public class EFS extends Utility{
         int i=0;
         for ( int j= startFileBlock +1; j<= endFileBlock + 1; j++){
             byte[] chunkFile = splitBytes(updatedBytes, i, i + FILE_SIZE_BYTES-1);
-//            System.out.println("Chunk file " + j + " length : " + chunkFile.length);
+            System.out.println("Chunk file " + j + " length : " + chunkFile.length);
             byte[] enc = blockEncrypt(chunkFile, ivEnc, ENC_BLOCK_SIZE);
+            System.out.println(1);
             byte[] hmac = calculateHMAC(enc, iv);
             byte[] signedEncBytes = concatenateByteArrayList(Arrays.asList(enc, hmac));
-            System.out.println("HMAC Final size : " + signedEncBytes.length);
-            save_to_file(signedEncBytes, new File(file_name, String.valueOf(j)));
+            System.out.println("Signed Final String : " + signedEncBytes.length);
+//            save_to_file(signedEncBytes, new File(file_name, String.valueOf(j)));
             i +=FILE_SIZE_BYTES-1;
         }
 
