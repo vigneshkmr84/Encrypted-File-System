@@ -143,7 +143,8 @@ public class EFS extends Utility{
 
         // Zero padding till message reaches a multiple of the block size
         // 16 for AES
-        byte[] paddedBytes = zeroPad(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
+//        byte[] paddedBytes = zeroPad(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);byte[] paddedBytes = zeroPad(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
+        byte[] paddedBytes = nullPadding(message, (int) Math.ceil((double) message.length / blockSize) * blockSize);
         byte[] outBytes = new byte[]{};
 
         System.out.println("Encryption Padded bytes : " + paddedBytes.length);
@@ -169,7 +170,7 @@ public class EFS extends Utility{
 //        System.out.println("Decryption Byte length " + message.length);
 
 //        while (i< message.length){
-        while (i< message.length){
+        while (i< messageSize){
             byte[] block = splitBytes(message,i, i+blockSize-1);
             byte[] blockOut = decript_AES(block, iv);
             outBytes = concatenateByteArrayList(Arrays.asList(outBytes, blockOut));
@@ -320,7 +321,7 @@ public class EFS extends Utility{
      */
     public byte[] calculateHMAC(byte[] message, byte[] key) throws Exception {
 
-        key = key.length > 64 ? hash_SHA256(key): zeroPad(key, 64);
+        key = key.length > 64 ? hash_SHA256(key): nullPadding(key, 64);
 
         byte[] ipad = new byte[]{0x36};
         byte[] opad = new byte[]{0x5c};
@@ -455,6 +456,8 @@ public class EFS extends Utility{
         int start_block = starting_position / FILE_SIZE_BYTES;
         int end_block = (starting_position + len) / FILE_SIZE_BYTES;
 
+        System.out.println("Start block : " + start_block + ", end_block : " + end_block);
+
         byte[] iv = getIV(file_name);
 
         byte[] ivDec = new byte[iv.length];
@@ -465,24 +468,33 @@ public class EFS extends Utility{
         System.out.println("IV Increment by " + incrementBy);
         incrementIV(ivDec, incrementBy);
 
+        // ORIGINAL MY CODE - ALMOST WORKING
         byte[] toReturn = "".getBytes();
+
+        String returnString = "";
 
         int lengthToDecrypt = 0;
         for (int i = start_block + 1; i <= end_block + 1; i++) {
             byte[] temp = read_from_file(new File(root, Integer.toString(i)));
 //            temp = blockDecrypt(temp, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
+
             temp = splitBytesWithSize(temp, 0, FILE_SIZE_BYTES);
-//            System.out.println("temp Size " + temp.length);
-            /*if (i == end_block + 1) {
-//                temp = temp.substring(0, starting_position + len - end_block * FILE_SIZE_BYTES);
-                temp = splitBytes(temp, 0, starting_position + len - end_block * FILE_SIZE_BYTES);
-            }
-            if (i == start_block + 1) {
-//                temp = temp.substring(starting_position - start_block * FILE_SIZE_BYTES);
-                temp = splitBytes(temp, starting_position - start_block * FILE_SIZE_BYTES, temp.length-1);
-            }*/
+            System.out.println("Reading file " + i + ", Read length : " + temp.length);
+//            if (i == end_block + 1) {
+////                temp = temp.substring(0, starting_position + len - end_block * FILE_SIZE_BYTES);
+//                temp = splitBytes(temp, 0, starting_position + len - end_block * FILE_SIZE_BYTES);
+//            }
+//            if (i == start_block + 1) {
+////                temp = temp.substring(starting_position - start_block * FILE_SIZE_BYTES);
+//                temp = splitBytes(temp, starting_position - start_block * FILE_SIZE_BYTES, temp.length-1);
+//            }
+
+//            System.out.println(Arrays.toString(ivDec));
+            byte[] d = blockDecrypt(temp, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
 
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, temp));
+            System.out.println(new String(d));
+            returnString += new String(d);
             lengthToDecrypt +=FILE_SIZE_BYTES;
         }
 
@@ -490,8 +502,14 @@ public class EFS extends Utility{
         byte[] dec = blockDecrypt(toReturn, ivDec, lengthToDecrypt, ENC_BLOCK_SIZE);
 
         int sp = starting_position < FILE_SIZE_BYTES ? starting_position: starting_position - start_block*FILE_SIZE_BYTES;
-        toReturn = splitBytesWithSize(dec, sp, len);
-        return toReturn;
+
+        int ep = starting_position + len - (start_block ) * FILE_SIZE_BYTES;
+        ep = Math.max(0, ep);
+//        System.out.println("Return String : " + returnString);
+
+//        return splitBytesWithSize(dec, sp, len);
+
+        return returnString.substring(sp, ep).getBytes();
     }
 
     /**
@@ -706,17 +724,19 @@ public class EFS extends Utility{
         int i=0;
         for ( int j= startFileBlock +1; j<= endFileBlock + 1; j++){
             byte[] chunkFile = splitBytes(updatedBytes, i, i + FILE_SIZE_BYTES-1);
-            System.out.println("Chunk file " + j + " length : " + chunkFile.length);
+//            System.out.println("Chunk file " + j + " length : " + chunkFile.length);
             byte[] enc = blockEncrypt(chunkFile, ivEnc, ENC_BLOCK_SIZE);
             byte[] hmac = calculateHMAC(enc, iv);
             byte[] signedEncBytes = concatenateByteArrayList(Arrays.asList(enc, hmac));
-//            save_to_file(signedEncBytes, new File(file_name, String.valueOf(j)));
+            System.out.println("HMAC Final size : " + signedEncBytes.length);
+            save_to_file(signedEncBytes, new File(file_name, String.valueOf(j)));
             i +=FILE_SIZE_BYTES-1;
         }
 
-        if (updatedLength > file_length)
+        if (updatedLength > file_length) {
             System.out.println("Overflow, updating file length");
-//            updateFileLength(file_name, updatedLength);
+            updateFileLength(file_name, updatedLength);
+        }
 
         System.out.println("File written successfully");
     }
