@@ -68,7 +68,7 @@ public class EFS extends Utility{
             updatedMeta.append(s).append("\n");
         }
 
-        byte[] f = nullPadding(updatedMeta.toString().getBytes(), FILE_SIZE_BYTES-1);
+        byte[] f = nullPadString(updatedMeta.toString(), FILE_SIZE_BYTES-1).getBytes();
 
         System.out.println("Final Metadata Length : " + f.length);
         save_to_file(f , new File(fileName, "0"));
@@ -236,6 +236,19 @@ public class EFS extends Utility{
         }
 
         return sb.toString().getBytes();
+    }
+
+    // \0 will not work properly if odd chars are added
+    // will work perfectly for even char's
+    public String nullPadString(String msg, int len){
+
+        // check the padding byte length
+        /*while(msg.getBytes().length < len){
+            msg +=("\0");
+        }
+
+        return msg;*/
+        return String.format("%-" + len + "s", msg);
     }
 
     public byte[] generateMetaFile(String file_name, String user_name, String password) throws Exception {
@@ -443,7 +456,7 @@ public class EFS extends Utility{
         byte[] toReturn = new byte[]{};
 
         // increment IV to the correct pointer
-        incrementIV(iv, start_block * (FILE_SIZE_BYTES / ENC_BLOCK_SIZE));
+        incrementIV(iv, start_block * 62);
 
         // read the chunk files, decrypt it and append the bytes
         for ( int i= start_block + 1; i<= end_block +1; i++){
@@ -468,11 +481,12 @@ public class EFS extends Utility{
         int file_length = length(file_name, password);
         System.out.println("File length : " + file_length);
         if (starting_position + len > file_length) {
-            throw new Exception("Overflow, Can not read.");
+            throw new Exception("Overflow, Can not read starting_pos : " + starting_position + ", len : " + len + ", file_length : " + file_length);
         }
 
         int start_block = starting_position / FILE_SIZE_BYTES;
-        int end_block = (starting_position + len) / FILE_SIZE_BYTES;
+        // adjusting end block to have accuracy
+        int end_block = (starting_position + len-1) / FILE_SIZE_BYTES;
 
         System.out.println("Start block : " + start_block + ", end_block : " + end_block);
 
@@ -511,21 +525,17 @@ public class EFS extends Utility{
             byte[] d = blockDecrypt(temp, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
 
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, temp));
-            System.out.println(new String(d));
+//            System.out.println(new String(d));
             returnString += new String(d);
             lengthToDecrypt +=FILE_SIZE_BYTES;
         }
 
         System.out.println("Length to decrypt : " + lengthToDecrypt);
-        byte[] dec = blockDecrypt(toReturn, ivDec, lengthToDecrypt, ENC_BLOCK_SIZE);
 
         int sp = starting_position < FILE_SIZE_BYTES ? starting_position: starting_position - start_block*FILE_SIZE_BYTES;
 
         int ep = starting_position + len - (start_block ) * FILE_SIZE_BYTES;
         ep = Math.max(0, ep);
-//        System.out.println("Return String : " + returnString);
-
-//        return splitBytesWithSize(dec, sp, len);
 
         return returnString.substring(sp, ep).getBytes();
     }
@@ -653,14 +663,12 @@ public class EFS extends Utility{
 
         int len = content.length;
 
-        if (starting_position  > file_length) {
-            System.out.println("Starting pos > file length");
-            throw new Exception();
-        }
+        if (starting_position  > file_length)
+            throw new Exception("Starting pos > file length");
 
         starting_position = Math.max(starting_position - 1, 0);
 
-        int ending_position = starting_position + len;
+        int ending_position = starting_position + len-1;
         int startFileBlock = starting_position / FILE_SIZE_BYTES;
 
         // FILE_SIZE_BYTES added to ensure that the block is covered till 992 bytes
@@ -673,8 +681,9 @@ public class EFS extends Utility{
             new File(file_name, "1").createNewFile();
         }
 
-        // start and end block to be read
-        // the complete block files will be read
+        // start and end block to be read, the complete block files will be read
+        // if the readTill is greater than the file length, then till end of the file is read
+        // else, read() function might throw Error
         int readFrom = startFileBlock * FILE_SIZE_BYTES;
         int readTill = Math.min(endFileBlock * FILE_SIZE_BYTES, file_length);
         int readLength = readTill - readFrom;
@@ -689,46 +698,29 @@ public class EFS extends Utility{
         incrementIV(ivEnc, incrementIvBy);
 
         // For a given starting_position X, sp has to end till X-1 position.
-        int sp = Math.max(starting_position % FILE_SIZE_BYTES-1, 0);
+        int sp = Math.max(starting_position % FILE_SIZE_BYTES, 0);
 //        int ep = ending_position >= file_length ? file_length-1: ending_position % FILE_SIZE_BYTES;
-        int ep = sp + len+1;
-        // to ensure that the file is trimmed correctly
-        if ( ep >= file_length )
-            sp = file_length-1;
+        int ep = sp + len;
+
 
 
         System.out.println("SP : " + sp + ", EP : " + ep);
         System.out.println("Read from : " + readFrom + ", Read Till : " + readTill + ", Read Length: " + readLength);
 
         byte[] decContents = read_new(file_name, readFrom, readLength, password);
-        System.out.println("READ String : " + new String(decContents));
-        System.out.println("READ Length " + decContents.length);
-        int suffixEndPoint = Math.min(decContents.length-1, readTill);
+        String readString = new String(decContents);
 
-        // if starting position == 0, then there will be no prefix.
-        byte[] prefix = starting_position == 0 ? "".getBytes() : splitBytes(decContents, 0, sp);
-        // If toWrite length > file length, then there will be no suffix at all.
-        byte[] suffix ;
 
-        // if the toWrite length is exceeding the existing contents
-        // then the file length will be extended, and thus no suffix
-        if ( len + starting_position > file_length ) {
-            System.out.println("Ignoring suffix chars");
-            suffix = "".getBytes();
-        }else{
-            suffix = splitBytes(decContents, ep, suffixEndPoint);
-        }
+        String prefix = readString.substring(0, sp);
+        String suffix = "";
+        // condition for overflow
+        if ( starting_position + len < file_length)
+            suffix = readString.substring(ep);
 
-        // need to check this
-//        incrementIV(ivEnc, sp * (FILE_SIZE_BYTES / ENC_BLOCK_SIZE));
+        String updatedString = prefix + new String(content) + suffix;
 
-        System.out.println("Prefix length " + prefix.length);
-        System.out.println("Prefix : " + new String(prefix));
-        System.out.println("Suffix length " + suffix.length);
-        System.out.println("Suffix : " + new String(suffix));
-        System.out.println("To write length " + content.length);
-        byte[] updatedBytes = concatenateByteArrayList(Arrays.asList(prefix, content, suffix));
-
+        System.out.println("Updated String length : " + updatedString.length());
+        byte[] updatedBytes = updatedString.getBytes();
         int updatedLength = updatedBytes.length;
 
         System.out.println("Updated length before padding " + updatedLength);
@@ -738,13 +730,16 @@ public class EFS extends Utility{
 //        System.out.println("Updated String before padding : " + new String(updatedBytes));
 
         System.out.println("Null padding to Length : " + toPadLength);
-        updatedBytes = nullPadding(updatedBytes, toPadLength-1);
-        System.out.println("Updated string after padding : " + new String(updatedBytes));
-        System.out.println("Final padded String length : " + updatedBytes.length);
-
+        updatedString = nullPadString(updatedString, toPadLength);
+        updatedBytes = updatedString.getBytes();
+        System.out.println("Updated string after padding : " + updatedString);
         updatedLength = updatedBytes.length;
+        System.out.println("Final padded bytes length : " + updatedLength);
+        System.out.println("Final padded string length : " + updatedString.length() );
 
-        int i=0;
+
+        System.out.println("Before writing files");
+        /*int i=0;
         for ( int j= startFileBlock +1; j<= endFileBlock + 1; j++){
             byte[] chunkFile = splitBytes(updatedBytes, i, i + FILE_SIZE_BYTES-1);
             System.out.println("Chunk file " + j + " length : " + chunkFile.length);
@@ -755,11 +750,28 @@ public class EFS extends Utility{
             System.out.println("Signed Final String : " + signedEncBytes.length);
 //            save_to_file(signedEncBytes, new File(file_name, String.valueOf(j)));
             i +=FILE_SIZE_BYTES-1;
+        }*/
+
+        int finalLength = starting_position + len;
+        if (finalLength < file_length)
+            finalLength = file_length;
+
+        int i=0;
+        for ( int j= startFileBlock +1; j<= endFileBlock +1 && i+FILE_SIZE_BYTES <= updatedBytes.length; j++){
+            byte[] chunk = updatedString.substring(i, i+FILE_SIZE_BYTES).getBytes();
+            byte[] encChunk = blockEncrypt(chunk, ivEnc, ENC_BLOCK_SIZE);
+            System.out.println("Length after enc : " + encChunk.length);
+            byte[] hmac = calculateHMAC(encChunk, iv);
+            byte[] encSignedBytes = concatenateByteArrayList(Arrays.asList(encChunk, hmac));
+            System.out.println("Length of chunk " + j + " after signed : " + encSignedBytes.length);
+//            System.out.println(new String(encSignedBytes));
+            save_to_file(encSignedBytes, new File(file_name, String.valueOf(j)));
+            i=i+FILE_SIZE_BYTES;
         }
 
-        if (updatedLength > file_length) {
+        if (finalLength > file_length) {
             System.out.println("Overflow, updating file length");
-            updateFileLength(file_name, updatedLength);
+            updateFileLength(file_name, finalLength);
         }
 
         System.out.println("File written successfully");

@@ -25,7 +25,7 @@ public class TestCase2 {
         efs.incrementIV(ivEnc, 62*2);
 
 
-        byte[] padded = efs.zeroPad(file3, 1023);
+        byte[] padded = efs.nullPad(file3, 1023);
         System.out.println("Padded length : " + padded.length);
         byte[] enc = efs.blockEncrypt(padded, ivEnc, 16);
 

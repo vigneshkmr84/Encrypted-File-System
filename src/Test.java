@@ -22,12 +22,41 @@ public class Test {
 //        System.out.println("Start chunk " + startEncChunk);
 //        System.out.println("End chunk " + endEncChunk);
 
-        int updatedLength = 993;
-//        int toPadLength = updatedLength + (FILE_SIZE_BYTES - (updatedLength % FILE_SIZE_BYTES));
 
-        int toPadLength = updatedLength % FILE_SIZE_BYTES == 0 ? updatedLength : (updatedLength/FILE_SIZE_BYTES + 1) * FILE_SIZE_BYTES;
-        System.out.println(toPadLength);
+//        System.out.println(roundNumber(30+88, 992));
 
+        String temp = "This isa  teascjasnckasckank  asacbscna  adbvukansc 73yr82y3rf acansca";
 
+        System.out.println("Length before padding : " + temp.length());
+        String temp_padding = padRight(temp, 992);
+        System.out.println("Length after padding : " + temp_padding.length());
+        System.out.println(temp_padding);
+    }
+
+    public static String padRight(String s, int n) {
+        return String.format("%-" + n + "s", s);
+    }
+
+    public static String nullPadString1(String str, int length) {
+        return String.format("%1$-" + length + "s", str).replace(' ', '\0');
+    }
+
+    static public String nullPadString(String msg, int len){
+
+        // check the padding byte length
+        while(msg.getBytes().length < len){
+            msg +=("\0");
+        }
+
+        return msg;
+    }
+
+    public static int roundNumber(int number, int roundToMultiple){
+
+        int remainder = number % roundToMultiple;
+        if ( remainder == 0)
+            return number;
+        else
+            return number + (roundToMultiple - remainder);
     }
 }
