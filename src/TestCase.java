@@ -10,7 +10,7 @@ public class TestCase{
     //        String password = "2b7e151628aed2a6abf71589";
     static final String userName = "vignesh";
     static final String password = "password";
-    static final String over_write = "OVERWRITE TEXT. this is a sample small text of short length of less than 100 characters.";
+    static final String over_write_new = "OVERwrite_new TEXT. this is a sample small text of short length of less than 100 characters.";
 
     // actual file length = //2234
     static int file_length = 2234;
@@ -38,16 +38,22 @@ public class TestCase{
 
         case_create();
         case_first_write();
-
-//        case_verify_pwd();
-//        case1();
-//        case2();
-//        case3();
-//        case4();
-//        case5();
-//        case6();
         case_read_new_all();
-        case_check_integrity();
+
+        case_verify_pwd();
+        case1();
+        case_read_new_all();
+        case2();
+        case_read_new_all();
+        case3();
+        case_read_new_all();
+        case4();
+        case_read_new_all();
+        case5();
+        case_read_new_all();
+        case6();
+        case_read_new_all();
+//        case_check_integrity();
 
 
     }
@@ -63,7 +69,7 @@ public class TestCase{
     }
 
     public static void case_first_write() throws Exception {
-        efs.write(fileName, 0, main_contents.getBytes(), password);
+        efs.write_new(fileName, 0, main_contents.getBytes(), password);
     }
 
     public static void case_read_new_all() throws Exception {
@@ -76,30 +82,30 @@ public class TestCase{
     // writing on 0th position
     // only first file affected, rest remains same.
     public static void case1() throws Exception {
-        efs.write(fileName, 0, over_write.getBytes(), password);
+        efs.write_new(fileName, 0, over_write_new.getBytes(), password);
     }
 
     public static void case2() throws Exception {
-        efs.write(fileName, 100, over_write.getBytes(), password);
+        efs.write_new(fileName, 100, over_write_new.getBytes(), password);
     }
 
     // exactly the end of file 1. Only file 1 will be affected
     public static void case3() throws Exception {
-        efs.write(fileName, 905, over_write.getBytes(), password);
+        efs.write_new(fileName, 905, over_write_new.getBytes(), password);
     }
 
     public static void case4() throws Exception {
-        efs.write(fileName, 1000, over_write.getBytes(), password);
+        efs.write_new(fileName, 1000, over_write_new.getBytes(), password);
     }
 
     public static void case5() throws Exception {
-        efs.write(fileName, 2100, over_write.getBytes(), password);
+        efs.write_new(fileName, 2100, over_write_new.getBytes(), password);
     }
 
     // writing on last part file
     // Overflow case
     public static void case6() throws Exception {
-        efs.write(fileName, 2200, over_write.getBytes(), password);
+        efs.write_new(fileName, 3326, over_write_new.getBytes(), password);
     }
 
     public static void case_check_integrity() throws Exception {

@@ -556,6 +556,120 @@ public class EFS extends Utility{
         return returnString.substring(sp, ep).getBytes();
     }
 
+    public void write_new(String file_name, int starting_position, byte[] content, String password) throws Exception {
+        System.out.println("======================================================");
+
+        if (!verifyPassword(password, file_name)){
+            throw new PasswordIncorrectException();
+        }
+
+        int file_length = length(file_name, password);
+        System.out.println("File length " + file_length);
+
+        int len = content.length;
+
+        if (starting_position  > file_length)
+            throw new Exception("Starting pos > file length");
+
+        if ( file_length == 0){
+            System.out.println("No contents exists in the file. Creating File chunk 1");
+            new File(file_name, "1").createNewFile();
+        }
+
+        int ending_position = starting_position + len-1;
+
+        int startFileBlock = starting_position / 992;
+        int endFileBlock = ending_position / FILE_SIZE_BYTES;
+
+        int prefixStartPosition = startFileBlock * 992;
+        int prefixLength = Math.min(992, file_length - startFileBlock*992);
+        int prefixEndPosition = prefixStartPosition + prefixLength;
+
+        int suffixStartPosition = endFileBlock * 992;
+        int suffixLength = Math.min(992, file_length - endFileBlock*992);
+        int suffixEndPosition = suffixStartPosition + suffixLength;
+
+        System.out.println("starting_position : " + starting_position + ", length : " + len);
+        System.out.println("Prefix : " + prefixStartPosition + ", " + prefixEndPosition);
+        System.out.println("Suffix : " + suffixStartPosition + ", " + suffixEndPosition);
+
+
+        byte[] suffixBlockContents, prefixBlockContents;
+
+        suffixBlockContents = read_new(file_name, suffixStartPosition, suffixLength, password);
+        prefixBlockContents= read_new(file_name, prefixStartPosition, prefixLength, password);
+
+        String prefixString = new String(prefixBlockContents, "ISO-8859-1");
+        String suffixString = new String(suffixBlockContents, "ISO-8859-1");
+
+        System.out.println("Prefix Block length : " + prefixString.length());
+        System.out.println("Suffix Block length : " + suffixString.length());
+
+        if ( starting_position + len > file_length){
+            prefixString = prefixString.substring(0, starting_position % 992);
+            suffixString = "";
+        }else{
+            prefixString = prefixString.substring(0, starting_position % 992);
+            suffixString = suffixString.substring((ending_position+1) % 992);
+        }
+
+        System.out.println("Prefix string : " + prefixString);
+        System.out.println("Prefix string length : " + prefixString.length());
+
+        System.out.println("Suffix string : " + suffixString);
+        System.out.println("Suffix string length : " + suffixString.length());
+
+        String finalString = prefixString + new String(content, "ISO-8859-1") + suffixString;
+
+        System.out.println("Final String : " + finalString);
+        System.out.println("Final string length : " + finalString.length());
+        System.out.println("Final byte length : " + finalString.getBytes("ISO-8859-1").length);
+
+        int updatedLength = finalString.length();
+        byte[] iv = getIV(file_name);
+
+        byte[] ivEnc = new byte[iv.length];
+        System.arraycopy(iv, 0, ivEnc, 0, iv.length-1);
+
+        int incrementIvBy = startFileBlock*62;
+        System.out.println("Incrementing iv by : " + incrementIvBy);
+        incrementIV(ivEnc, incrementIvBy);
+
+        System.out.println("Updated length before padding " + updatedLength);
+        int toPadLength = roundNumber(updatedLength, FILE_SIZE_BYTES);
+
+        System.out.println("Null padding to Length : " + toPadLength);
+        finalString = nullPadString(finalString, toPadLength);
+
+        System.out.println("After Padding string length : " + finalString.length());
+        System.out.println("After Padding bytes length : " + finalString.getBytes("ISO-8859-1").length);
+
+        int finalLength = starting_position + len;
+        if (finalLength < file_length)
+            finalLength = file_length;
+
+        int i=0;
+        for ( int j= startFileBlock +1; j<= endFileBlock +1 && i+FILE_SIZE_BYTES <= finalString.length(); j++){
+            byte[] chunk = finalString.substring(i, i+FILE_SIZE_BYTES).getBytes("ISO-8859-1");
+            byte[] encChunk = blockEncrypt(chunk, ivEnc, ENC_BLOCK_SIZE);
+            System.out.println("Length after enc : " + encChunk.length);
+            byte[] hmac = calculateHMAC(encChunk, iv);
+            byte[] encSignedBytes = concatenateByteArrayList(Arrays.asList(encChunk, hmac));
+            System.out.println("Length of chunk " + j + " after signed : " + encSignedBytes.length);
+            save_to_file(encSignedBytes, new File(file_name, String.valueOf(j)));
+            i=i+FILE_SIZE_BYTES;
+        }
+
+        if (finalLength > file_length) {
+            System.out.println("Overflow, updating file length : " + finalLength);
+            updateFileLength(file_name, finalLength);
+        }
+
+        System.out.println("File written successfully");
+
+        System.out.println("======================================================");
+    }
+
     /**
      * Algorithm:
      *  - Read Metadata file for existing file length, iv
