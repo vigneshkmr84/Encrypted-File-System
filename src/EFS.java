@@ -59,6 +59,7 @@ public class EFS extends Utility{
         String newLenBase64 = Base64.getEncoder().encodeToString(newLength.getBytes());
         String[] contents = new String(read_from_file(new File(metaFile))).split("\n");
         contents[0] = newLenBase64;
+        byte[] iv = getIV(fileName);
 
         // remove the last null padding line
         contents = Arrays.copyOf(contents, contents.length-1);
@@ -68,10 +69,12 @@ public class EFS extends Utility{
             updatedMeta.append(s).append("\n");
         }
 
-        byte[] f = nullPadString(updatedMeta.toString(), FILE_SIZE_BYTES-1).getBytes();
+        byte[] f = nullPadString(updatedMeta.toString(), FILE_SIZE_BYTES).getBytes();
+        byte[] hmac = calculateHMAC(f, iv);
 
-        System.out.println("Final Metadata Length : " + f.length);
-        save_to_file(f , new File(fileName, "0"));
+        byte[] signedFile = concatenateByteArrayList(Arrays.asList(f, hmac));
+        System.out.println("Final Metadata Length : " + signedFile.length);
+        save_to_file(signedFile , new File(fileName, "0"));
     }
 
     public byte[] splitBytes(byte[] array, int sp, int ep) {
@@ -119,11 +122,6 @@ public class EFS extends Utility{
         return out;
     }
 
-    public byte[] zeroPad(byte[] b, int outputByteSize){
-        byte[] out = new byte[outputByteSize];
-        System.arraycopy(b, 0, out, 0, b.length);
-        return out;
-    }
 
     /**
      * Encrypt a block of 16 bytes (128 bits) with incremental IV (Counter Mode)
@@ -175,9 +173,8 @@ public class EFS extends Utility{
         System.out.println("Message length " + message.length);
         System.out.println("Message size : " + messageSize);
         int i=0;
-//        System.out.println("Decryption Byte length " + message.length);
 
-//        while (i< message.length){
+        // message length can be anything, so use message Size to decrypt it properly
         while (i< messageSize){
             byte[] block = splitBytes(message,i, i+blockSize-1);
             byte[] blockOut = decript_AES(block, iv);
@@ -186,9 +183,7 @@ public class EFS extends Utility{
             incrementIV(iv, 1);
         }
 
-        byte[] out = trimByteArray(outBytes, messageSize);
-
-        return out;
+        return trimByteArray(outBytes, messageSize);
     }
 
     public byte[] splitBytesWithSize(byte[] array, int sp, int len) {
@@ -205,8 +200,8 @@ public class EFS extends Utility{
         byte[] new_password_hash = getPasswordHash(salt_bytes
                 , password.getBytes(StandardCharsets.UTF_8));
 
-//        return Arrays.equals(original_hash_bytes, new_password_hash);
-        return true;
+        return Arrays.equals(original_hash_bytes, new_password_hash);
+//        return true;
     }
 
     public static byte[] randomPadding(byte[] message, int padding){
@@ -231,7 +226,15 @@ public class EFS extends Utility{
     public byte[] nullPadding(byte[] msg, int len){
         StringBuilder sb = new StringBuilder(new String(msg));
 
-        while(sb.length() < len){
+        /*while(sb.length() < len){
+            sb.append("\0");
+        }
+
+        return sb.toString().getBytes();*/
+
+        // String length might be different from bytes length
+        // Using bytes length to compare
+        while(sb.toString().getBytes().length < len){
             sb.append("\0");
         }
 
@@ -241,19 +244,17 @@ public class EFS extends Utility{
     // \0 will not work properly if odd chars are added
     // will work perfectly for even char's
     public String nullPadString(String msg, int len){
-
-        // check the padding byte length
-        /*while(msg.getBytes().length < len){
-            msg +=("\0");
-        }
-
-        return msg;*/
         return String.format("%-" + len + "s", msg);
     }
 
     public byte[] generateMetaFile(String file_name, String user_name, String password) throws Exception {
 
         StringBuilder sb = new StringBuilder();
+
+        if (user_name.length() > 128 )
+            throw new Exception("Username length > 128 bytes");
+        else if (password.length() > 128)
+            throw new Exception("Password length > 128 bytes");
 
         // 16 bytes = 128 bits
         byte[] saltBytes = secureRandomNumber(16);
@@ -262,31 +263,35 @@ public class EFS extends Utility{
         byte[] passBytes = password.getBytes(StandardCharsets.UTF_8);
         byte[] hashedPass = getPasswordHash(saltBytes, passBytes);
 
-//        byte[] lenEnc = encript_AES("0".getBytes(), ivBytes);
+//        byte[] lenEnc = encrypt_AES("0".getBytes(), ivBytes);
+        // file length
         String line1 = Base64.getEncoder().encodeToString("0".getBytes());
+        // user_name
         String line2 = Base64.getEncoder().encodeToString(user_name.getBytes());
+        // hashed password
         String line3 = Base64.getEncoder().encodeToString(randomPadding(hashedPass, AES_BLOCK_SIZE));
+        // salt + IV
         String line4 = Base64.getEncoder().encodeToString(randomPadding(concatenateByteArrayList(Arrays.asList(saltBytes, ivBytes)), AES_BLOCK_SIZE*2));
-        String line5 = Base64.getEncoder().encodeToString(randomPadding("01234567899876543210123456789012".getBytes(), AES_BLOCK_SIZE));
+
+//        String line5 = Base64.getEncoder().encodeToString(randomPadding("01234567899876543210123456789012".getBytes(), AES_BLOCK_SIZE));
 
         sb.append(line1).append(System.lineSeparator())
                 .append(line2).append(System.lineSeparator())
                 .append(line3).append(System.lineSeparator())
-                .append(line4).append(System.lineSeparator())
-                ;
+                .append(line4).append(System.lineSeparator());
 
 
         byte[] hmac = calculateHMAC(sb.toString().getBytes(), ivBytes);
         sb.append(new String(hmac));
         // null padding till file size = 1024
-        System.out.println("Meta file before padding : " + sb.length());
-        byte[] meta_file = nullPadding(sb.toString().getBytes(), FILE_SIZE_BYTES-1);
-        System.out.println("Final size after padding : " + meta_file.length);
+        System.out.println("Metafile size before padding : " + sb.length());
+        byte[] padded_meta_file = nullPadding(sb.toString().getBytes(), Config.BLOCK_SIZE);
 
+        System.out.println("Metafile bytes size after padding : " + padded_meta_file.length);
         // write to file
-        save_to_file(meta_file, new File(file_name, "0"));
+        save_to_file(padded_meta_file, new File(file_name, "0"));
 
-        return meta_file;
+        return padded_meta_file;
     }
 
     public String getMetaDataLine(String file, int lineNo) throws Exception {
@@ -294,6 +299,7 @@ public class EFS extends Utility{
         String[] split = new String(contentsBytes, StandardCharsets.UTF_8).split(System.lineSeparator());
         return split[lineNo];
     }
+
     public byte[] concatenateByteArrayList(List<byte[]> b1) throws Exception{
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
         for (byte[] bytes : b1) {
@@ -423,11 +429,14 @@ public class EFS extends Utility{
     public int length(String file_name, String password) throws Exception {
         File dir = new File(file_name);
         String length = "";
-        if (dir.exists() && dir.isDirectory() && verifyPassword(password, file_name)){
-            length = new String(Base64.getDecoder().decode(getMetaDataLine(file_name, 0))
-                    , StandardCharsets.UTF_8);
-            return Integer.parseInt(length) / getScore(file_name);
-        }
+        if (verifyPassword(password, file_name)) {
+            if (dir.exists() && dir.isDirectory()) {
+                length = new String(Base64.getDecoder().decode(getMetaDataLine(file_name, 0))
+                        , StandardCharsets.UTF_8);
+                return Integer.parseInt(length) / getScore(file_name);
+            }
+        }else
+            throw new PasswordIncorrectException();
 
         return 0;
     }
@@ -435,48 +444,10 @@ public class EFS extends Utility{
     @Override
     public byte[] read(String file_name, int starting_position, int len, String password) throws Exception{
 
-        File root = new File(file_name);
-        int file_length = length(file_name, password);
-        System.out.println("Total File length : " + file_length);
-        System.out.println("Read starting pos : " + starting_position);
-        System.out.println("Read length : " + len);
-        if (starting_position + len -1 > file_length) {
-            throw new Exception("File length : " + file_length);
+        if (!verifyPassword(password, file_name)){
+            throw new PasswordIncorrectException();
         }
 
-        byte[] iv = getIV(file_name);
-
-        byte[] ivDec = new byte[iv.length];
-        System.arraycopy(iv, 0, ivDec, 0, iv.length-1);
-
-        int start_block = starting_position / FILE_SIZE_BYTES;
-        int end_block = (starting_position + len - 1) / FILE_SIZE_BYTES;
-
-        System.out.println("Read File Start Block : " + start_block + " End Block : " + end_block);
-        byte[] toReturn = new byte[]{};
-
-        // increment IV to the correct pointer
-        incrementIV(iv, start_block * 62);
-
-        // read the chunk files, decrypt it and append the bytes
-        for ( int i= start_block + 1; i<= end_block +1; i++){
-            String blockFile = file_name + File.separator + i;
-            byte[] f = read_from_file(new File(blockFile));
-//            System.out.println("Reading file : " + blockFile + ", length " + f.length);
-
-            byte[] decrypted = blockDecrypt(f, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
-            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, decrypted));
-        }
-
-        int sp = Math.max(starting_position % FILE_SIZE_BYTES -1, 0);
-
-        toReturn = splitBytes(toReturn, sp, sp + len - 1);
-
-        return toReturn;
-    }
-
-
-    public byte[] read_new(String file_name, int starting_position, int len, String password) throws Exception{
         File root = new File(file_name);
         int file_length = length(file_name, password);
         System.out.println("File length : " + file_length);
@@ -508,24 +479,69 @@ public class EFS extends Utility{
         int lengthToDecrypt = 0;
         for (int i = start_block + 1; i <= end_block + 1; i++) {
             byte[] temp = read_from_file(new File(root, Integer.toString(i)));
-//            temp = blockDecrypt(temp, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
-
             temp = splitBytesWithSize(temp, 0, FILE_SIZE_BYTES);
             System.out.println("Reading file " + i + ", Read length : " + temp.length);
-//            if (i == end_block + 1) {
-////                temp = temp.substring(0, starting_position + len - end_block * FILE_SIZE_BYTES);
-//                temp = splitBytes(temp, 0, starting_position + len - end_block * FILE_SIZE_BYTES);
-//            }
-//            if (i == start_block + 1) {
-////                temp = temp.substring(starting_position - start_block * FILE_SIZE_BYTES);
-//                temp = splitBytes(temp, starting_position - start_block * FILE_SIZE_BYTES, temp.length-1);
-//            }
-
-//            System.out.println(Arrays.toString(ivDec));
             byte[] d = blockDecrypt(temp, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
 
             toReturn = concatenateByteArrayList(Arrays.asList(toReturn, temp));
-//            System.out.println(new String(d));
+
+            returnString += new String(d);
+            lengthToDecrypt +=FILE_SIZE_BYTES;
+        }
+
+        System.out.println("Length to decrypt : " + lengthToDecrypt);
+
+        int sp = starting_position < FILE_SIZE_BYTES ? starting_position: starting_position - start_block*FILE_SIZE_BYTES;
+
+        int ep = starting_position + len - (start_block ) * FILE_SIZE_BYTES;
+        ep = Math.max(0, ep);
+
+        return returnString.substring(sp, ep).getBytes();
+    }
+
+
+    public byte[] read_new(String file_name, int starting_position, int len, String password) throws Exception{
+
+        if (!verifyPassword(password, file_name)){
+            throw new PasswordIncorrectException();
+        }
+
+        File root = new File(file_name);
+        int file_length = length(file_name, password);
+        System.out.println("File length : " + file_length);
+        if (starting_position + len > file_length) {
+            throw new Exception("Overflow, Can not read starting_pos : " + starting_position + ", len : " + len + ", file_length : " + file_length);
+        }
+
+        int start_block = starting_position / FILE_SIZE_BYTES;
+        // adjusting end block to have accuracy
+        int end_block = (starting_position + len-1) / FILE_SIZE_BYTES;
+
+        System.out.println("Start block : " + start_block + ", end_block : " + end_block);
+
+        byte[] iv = getIV(file_name);
+
+        byte[] ivDec = new byte[iv.length];
+        System.arraycopy(iv, 0, ivDec, 0, iv.length-1);
+
+        // increment IV to the correct pointer
+        int incrementBy = start_block * 62;
+        System.out.println("IV Increment by " + incrementBy);
+        incrementIV(ivDec, incrementBy);
+
+        byte[] toReturn = "".getBytes();
+
+        String returnString = "";
+
+        int lengthToDecrypt = 0;
+        for (int i = start_block + 1; i <= end_block + 1; i++) {
+            byte[] temp = read_from_file(new File(root, Integer.toString(i)));
+
+            temp = splitBytesWithSize(temp, 0, FILE_SIZE_BYTES);
+            System.out.println("Reading file " + i + ", Read length : " + temp.length);
+            byte[] d = blockDecrypt(temp, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
+
+            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, temp));
             returnString += new String(d);
             lengthToDecrypt +=FILE_SIZE_BYTES;
         }
@@ -560,103 +576,12 @@ public class EFS extends Utility{
      * @param password - password for the file
      * @throws Exception
      */
-    /*@Override
-    public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
-
-        String toWrite = byteArray2String(content);
-
-        int file_length = length(file_name, password);
-        System.out.println("File length " + file_length);
-
-        int len = toWrite.length();
-
-        if (starting_position  > file_length) {
-            System.out.println("Starting pos > file length");
-            throw new Exception();
-        }
-
-        int startFileBlock = starting_position / FILE_SIZE_BYTES;
-
-        if ( file_length == 0){
-            System.out.println("No contents exists in the file. Creating File chunk 1");
-            new File(file_name, "1").createNewFile();
-        }
-
-        byte[] iv = getIV(file_name);
-
-        byte[] ivEnc = new byte[iv.length];
-        System.arraycopy(iv, 0, ivEnc, 0, iv.length-1);
-
-        byte[] allBlocks;
-        int sp = startFileBlock * FILE_SIZE_BYTES;
-        sp = Math.max(sp, 0);
-        int ep = file_length - sp;
-
-//        incrementIV(iv, start_block * (FILE_SIZE_BYTES / ENC_BLOCK_SIZE));
-        incrementIV(ivEnc, sp * (FILE_SIZE_BYTES / ENC_BLOCK_SIZE));
-
-        // if starting and ending position == 0, then it's the first position to start writing
-        System.out.println(sp);
-        System.out.println(ep);
-        allBlocks = sp == ep ? "".getBytes() : read(file_name, sp, ep, password);
-        String allBlocksString = new String(allBlocks);
-
-
-        int splitPoint = starting_position % FILE_SIZE_BYTES-1;
-        if (splitPoint < 0 )
-            splitPoint = 0;
-
-        System.out.println("Total READ Length : " + allBlocksString.length());
-        String prefix = allBlocksString.substring(0, splitPoint);
-        String suffix = allBlocksString.substring(splitPoint);
-
-        System.out.println("Prefix Length " + prefix.length());
-        System.out.println("Suffix Length " + suffix.length());
-        System.out.println("To Write length " + toWrite.length());
-
-        StringBuilder finalMessage = new StringBuilder(prefix + toWrite + suffix);
-        System.out.println("Write Output length : " + finalMessage.length());
-
-        int paddedLength = (int)Math.ceil((double)finalMessage.length()/FILE_SIZE_BYTES) * FILE_SIZE_BYTES;
-        System.out.println("Expected Padded Length : " + paddedLength);
-
-
-        int updated_file_len = finalMessage.length();
-
-        while ( finalMessage.length() < paddedLength){
-            finalMessage.append("\0");
-        }
-
-        int sf = startFileBlock + 1;
-        int ef = finalMessage.length() / FILE_SIZE_BYTES;
-
-        System.out.println("Start File for writing : " + sf);
-        System.out.println("End File to write : " + ef);
-        System.out.println("Actual Padded Length : " + finalMessage.length());
-        System.out.println("Write Final Output : " + finalMessage);
-
-
-
-        updateFileLength(file_name, updated_file_len);
-        removeChunkFiles(file_name, sf, ef);
-
-        int i=0;
-
-        while(sf <= ef){
-            byte[] chunkFile = finalMessage.substring(i, i + FILE_SIZE_BYTES).getBytes();
-            System.out.println("Chunk file " + sf + " length : " + chunkFile.length);
-            byte[] enc = blockEncrypt(chunkFile, ivEnc, ENC_BLOCK_SIZE);
-            byte[] hmac = calculateHMAC(enc, iv);
-            byte[] signedEncBytes = concatenateByteArrayList(Arrays.asList(enc, hmac));
-            save_to_file(signedEncBytes, new File(file_name, String.valueOf(sf++)));
-            i +=FILE_SIZE_BYTES;
-        }
-
-        System.out.println("Successfully Written.");
-    }
-*/
     @Override
     public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
+
+        if (!verifyPassword(password, file_name)){
+            throw new PasswordIncorrectException();
+        }
 
         int file_length = length(file_name, password);
         System.out.println("File length " + file_length);
@@ -671,8 +596,6 @@ public class EFS extends Utility{
         int ending_position = starting_position + len-1;
         int startFileBlock = starting_position / FILE_SIZE_BYTES;
 
-        // FILE_SIZE_BYTES added to ensure that the block is covered till 992 bytes
-//        int endFileBlock = (ending_position + FILE_SIZE_BYTES) / FILE_SIZE_BYTES;
         int endFileBlock = roundNumber(ending_position, FILE_SIZE_BYTES) / FILE_SIZE_BYTES;
 
 
@@ -699,7 +622,6 @@ public class EFS extends Utility{
 
         // For a given starting_position X, sp has to end till X-1 position.
         int sp = Math.max(starting_position % FILE_SIZE_BYTES, 0);
-//        int ep = ending_position >= file_length ? file_length-1: ending_position % FILE_SIZE_BYTES;
         int ep = sp + len;
 
 
@@ -719,15 +641,17 @@ public class EFS extends Utility{
 
         String updatedString = prefix + new String(content) + suffix;
 
+        if ( updatedString.equals(readString)){
+            System.out.println("To write content same as existing content. Ignoring write operation");
+            return;
+        }
+
         System.out.println("Updated String length : " + updatedString.length());
         byte[] updatedBytes = updatedString.getBytes();
         int updatedLength = updatedBytes.length;
 
         System.out.println("Updated length before padding " + updatedLength);
-//        int toPadLength = updatedLength % FILE_SIZE_BYTES == 0 ? updatedLength : (updatedLength/FILE_SIZE_BYTES + 1) * FILE_SIZE_BYTES;
         int toPadLength = roundNumber(updatedLength, FILE_SIZE_BYTES);
-
-//        System.out.println("Updated String before padding : " + new String(updatedBytes));
 
         System.out.println("Null padding to Length : " + toPadLength);
         updatedString = nullPadString(updatedString, toPadLength);
@@ -739,18 +663,6 @@ public class EFS extends Utility{
 
 
         System.out.println("Before writing files");
-        /*int i=0;
-        for ( int j= startFileBlock +1; j<= endFileBlock + 1; j++){
-            byte[] chunkFile = splitBytes(updatedBytes, i, i + FILE_SIZE_BYTES-1);
-            System.out.println("Chunk file " + j + " length : " + chunkFile.length);
-            byte[] enc = blockEncrypt(chunkFile, ivEnc, ENC_BLOCK_SIZE);
-            System.out.println(1);
-            byte[] hmac = calculateHMAC(enc, iv);
-            byte[] signedEncBytes = concatenateByteArrayList(Arrays.asList(enc, hmac));
-            System.out.println("Signed Final String : " + signedEncBytes.length);
-//            save_to_file(signedEncBytes, new File(file_name, String.valueOf(j)));
-            i +=FILE_SIZE_BYTES-1;
-        }*/
 
         int finalLength = starting_position + len;
         if (finalLength < file_length)
@@ -764,7 +676,6 @@ public class EFS extends Utility{
             byte[] hmac = calculateHMAC(encChunk, iv);
             byte[] encSignedBytes = concatenateByteArrayList(Arrays.asList(encChunk, hmac));
             System.out.println("Length of chunk " + j + " after signed : " + encSignedBytes.length);
-//            System.out.println(new String(encSignedBytes));
             save_to_file(encSignedBytes, new File(file_name, String.valueOf(j)));
             i=i+FILE_SIZE_BYTES;
         }
@@ -791,28 +702,32 @@ public class EFS extends Utility{
 
         int status = 0;
 
-        if ( verifyPassword(password, file_name ) ){
+        if (!verifyPassword(password, file_name)){
+            throw new PasswordIncorrectException();
+        }
 
             int length = length(file_name, password);
             byte[] iv = getIV(file_name);
-            int totalFiles = (int)Math.ceil( (double) length / 992);
-            System.out.println("Total files : " + totalFiles);
+            int totalFiles = (int)Math.ceil( (double) length / FILE_SIZE_BYTES);
+            System.out.println("INTEGRITY : Total files : " + totalFiles);
 
             for ( int i=0; i<=totalFiles ; i++){
                 String f = file_name + File.separator + i;
-                byte[] msg = read_from_file(new File(f));
-                byte[] enc = splitBytes(msg, 0, 991);
-                String fileHMAC = new String(splitBytes(msg, 992, 1024));
-                String calculatedHMAC = new String(calculateHMAC(enc, iv));
-                if (calculatedHMAC.equals(fileHMAC)) {
-                    System.out.println("File " + f + ", status : invalid");
-                    status++;
+                try{
+                    byte[] contents = read_from_file(new File(f));
+                    byte[] encMsg = splitBytes(contents, 0, 991);
+                    String existingHMAC = new String(splitBytes(contents, 992, Config.BLOCK_SIZE));
+                    String calculatedHMAC = new String(calculateHMAC(encMsg, iv));
+                    if (calculatedHMAC.equals(existingHMAC)) {
+                        System.out.println("INTEGRITY : Chunk " + f + ", status : invalid");
+                        status++;
+                    }
+                }catch (Exception e){
+                    status +=1;
+                    System.out.println("INTEGRITY : Exception occurred at processing file : " + f);
+                    System.out.println(e.getMessage());
                 }
             }
-
-        }else{
-            throw new PasswordIncorrectException();
-        }
 
     	return status == 0;
   }
@@ -826,13 +741,20 @@ public class EFS extends Utility{
     @Override
     public void cut(String file_name, int len, String password) throws Exception {
 
+        if (!verifyPassword(password, file_name)){
+            throw new PasswordIncorrectException();
+        }
+
         File root = new File(file_name);
         int file_length = length(file_name, password);
 
         if (len > file_length) {
-            System.out.println("Length too long than contents of the file");
             throw new Exception("Length too long than contents of the file");
+        }else if ( len == file_length){
+            System.out.println("Same length. ignoring any operation.");
+            return;
         }
+
         int end_block = (len) / FILE_SIZE_BYTES;
 
         byte[] iv = getIV(file_name);
@@ -846,7 +768,7 @@ public class EFS extends Utility{
         File file = new File(root, Integer.toString(end_block + 1));
 
         // decrypt the file and save as string
-//        byte[] dec = decript_AES(read_from_file(file), iv);
+//        byte[] dec = decrypt_AES(read_from_file(file), iv);
         byte[] msg = read_from_file(file);
         byte[] dec = blockDecrypt(msg, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
         String str = new String(dec);
@@ -866,7 +788,7 @@ public class EFS extends Utility{
         int cur = end_block + 2;
         file = new File(root, Integer.toString(cur));
         while (file.exists()) {
-            file.delete();
+            System.out.println("Deleting file : " +  file.getAbsolutePath() + ", status : " + file.delete());
             cur++;
         }
 
