@@ -443,101 +443,14 @@ public class EFS extends Utility {
 
     @Override
     public byte[] read(String file_name, int starting_position, int len, String password) throws Exception {
-        return read_new(file_name, starting_position, len, password);
+//        return read_new(file_name, starting_position, len, password);
+        return read2(file_name, starting_position, len, password);
     }
 
     public byte[] read2(String file_name, int starting_position, int len, String password) throws Exception {
 
-//        if (!verifyPassword(password, file_name))
-//            throw new PasswordIncorrectException();
-//
-//        int file_length = length(file_name, password);
-//        int ending_position = starting_position + len - 1;
-//
-//        if (starting_position + len > file_length)
-//            throw new Exception("Overflow, Can not read starting_pos : " + starting_position + ", len : " + len + ", file_length : " + file_length);
-//
-//        int startFileBlock = starting_position / 992;
-//        int endFileBlock = (starting_position + len - 1) / 992;
-//
-//        System.out.println("Starting position : " + starting_position + ", ending position : " + ending_position);
-//        System.out.printf("Start file block : %d, end file block : %d\n", startFileBlock, endFileBlock);
-//
-//        byte[] iv = getIV(file_name);
-//
-//        byte[] ivDec = new byte[iv.length];
-//        System.arraycopy(iv, 0, ivDec, 0, iv.length - 1);
-//
-//        int startAESBlock = (int) Math.floor((double) starting_position / 16) - startFileBlock * 62;
-//        int endAESBlock = (int) Math.ceil((double) ending_position / 16) - endFileBlock * 62;
-//
-//        incrementIV(ivDec, startAESBlock);
-//
-//
-//        System.out.println("Start AES Block : " + startFileBlock + ", End AES Block : " + endAESBlock);
-//
-//        // increment IV to the correct pointer
-////        int incrementBy = startFileBlock * 62;
-//
-//        String toReturn = "";
-//
-//        int startPositionInAESBlock = (starting_position % 992) % 16;
-////            int endPositionInAESBlock = 16 - (ending_position % 992) % 16;
-//        int endPositionInAESBlock = startPositionInAESBlock + len;
-//
-//        for (int i = startFileBlock + 1; i <= endFileBlock + 1; i++) {
-//            String f = file_name + File.separator + i;
-//            System.out.println("Reading from file : " + f);
-//            byte[] contents = read_from_file(new File(f));
-//            String contentString = new String(contents, "ISO-8859-1");
-//            byte[] decBytes = new byte[]{};
-//
-//
-//
-//            int totalAESBlocks = 62;
-//            String encryptedString = contentString;
-//            // decrypt only from the starting position
-//            if (i == startFileBlock + 1) {
-//                encryptedString = encryptedString.substring(startAESBlock * 16, 992);
-//                System.out.println("Starting AES Block : " + startAESBlock);
-//                System.out.println("Begin Encrypted string length : " + encryptedString.length());
-//                totalAESBlocks -= startAESBlock;
-//            }
-//            // decrypt till the given length
-//            if (i == endFileBlock + 1) {
-//                encryptedString = encryptedString.substring(0, endAESBlock * 16);
-//                System.out.println("Ending AES Block : " + endAESBlock);
-//                System.out.println("Final Encrypted string length : " + encryptedString.length());
-//                totalAESBlocks -= (62 - endAESBlock);
-//            }
-//
-////            decBytes = blockDecrypt(encryptedString.getBytes("ISO-8859-1"), ivDec, totalAESBlocks * 16, 16);
-////            encryptedString = new String(decBytes, "ISO-8859-1");
-//
-//            if (i != startFileBlock + 1 && i != endFileBlock + 1) {
-//                // full 992 bytes will be contents
-//                encryptedString = encryptedString.substring(0, 992);
-//                System.out.println("Middle Encrypted string length : " + encryptedString.length());
-////                decBytes = blockDecrypt(encryptedString.getBytes("ISO-8859-1"), ivDec, 992, 16);
-////                encryptedString = new String(decBytes, "ISO-8859-1");
-//            }
-//
-//            decBytes = blockDecrypt(encryptedString.getBytes("ISO-8859-1"), ivDec, totalAESBlocks * 16, 16);
-//            encryptedString = new String(decBytes, "ISO-8859-1");
-//
-//            System.out.println("Contents of file block " + i + " : " + encryptedString);
-//            System.out.println("Length of bytes file block " + i + " : " + encryptedString.length());
-//
-//            toReturn += encryptedString;
-//        }
-//
-//        toReturn = toReturn.substring(startPositionInAESBlock, endPositionInAESBlock);
-//        return toReturn.getBytes("ISO-8859-1");
-
-
-        if (!verifyPassword(password, file_name)) {
+        if (!verifyPassword(password, file_name))
             throw new PasswordIncorrectException();
-        }
 
         File root = new File(file_name);
         int file_length = length(file_name, password);
@@ -566,40 +479,26 @@ public class EFS extends Utility {
         String returnString = "";
         String encString = "";
 
-        int startAESBlockInFile = (int) Math.floor((double) starting_position / 16) - startFileBlock * 62;
-        int endAESBlockInFile = (int) Math.ceil((double) ending_position / 16) - startAESBlockInFile;
-
-        int lengthToDecrypt = 0;
         for (int i = startFileBlock + 1; i <= endFileBlock + 1; i++) {
             byte[] contents = read_from_file(new File(root, Integer.toString(i)));
-
-            String data = "";
-            /*contents = splitBytesWithSize(contents, 0, FILE_SIZE_BYTES);
-            System.out.println("Reading file " + i + ", Read length : " + contents.length);
-            byte[] d = blockDecrypt(contents, ivDec, FILE_SIZE_BYTES, ENC_BLOCK_SIZE);
-
-            toReturn = concatenateByteArrayList(Arrays.asList(toReturn, contents));
-            returnString += new String(d);
-            lengthToDecrypt += FILE_SIZE_BYTES;*/
-
-            data = new String(contents, "ISO-8859-1").substring(0, 992);
+            // getting only data string, bytes [992, 1023] are HMAC data
+            String data = new String(contents, "ISO-8859-1").substring(0, 992);
             encString += data;
         }
-
-//        int sp = starting_position < FILE_SIZE_BYTES ? starting_position : starting_position - startFileBlock * FILE_SIZE_BYTES;
-//        int ep = starting_position + len - (startFileBlock) * FILE_SIZE_BYTES;
-//        ep = Math.max(0, ep);
 
         int sp = starting_position % 16;
         int ep = sp + len;
 
-        System.out.println("Reference Start block " + startAESBlockInFile + ", End block : " + endAESBlockInFile);
-        encString = encString.substring(startAESBlockInFile*16, endAESBlockInFile*16);
+        int startAESBlockReference = (int) Math.floor((double) sp / 16);
+        int endAESBlockInReference = (int) Math.ceil((double) ep / 16);
+
+        System.out.println("Reference Start block " + startAESBlockReference + ", End block : " + endAESBlockInReference);
+        encString = encString.substring(startAESBlockReference*16, endAESBlockInReference*16);
 
         System.out.println("Length of string to be decrypted : " + encString.length());
         returnString = new String(blockDecrypt(encString.getBytes("ISO-8859-1"), ivDec, encString.length(), 16), "ISO-8859-1");
 
-        System.out.println("Decrypted string : " + returnString);
+//        System.out.println("Decrypted string : " + returnString);
         System.out.println("Splitting decrypted string from : " + sp + ", to : " + ep);
 
         return returnString.substring(sp, ep).getBytes();
