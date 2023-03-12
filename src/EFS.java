@@ -289,8 +289,9 @@ public class EFS extends Utility {
         byte[] padded_meta_file = nullPadding(sb.toString().getBytes(), Config.BLOCK_SIZE);
 
         System.out.println("Metafile bytes size after padding : " + padded_meta_file.length);
+
         // write to file
-        save_to_file(padded_meta_file, new File(file_name, "0"));
+//        save_to_file(padded_meta_file, new File(file_name, "0"));
 
         return padded_meta_file;
     }

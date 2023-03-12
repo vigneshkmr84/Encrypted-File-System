@@ -1,11 +1,13 @@
+import java.util.Base64;
+
 public class Test {
 
-    public static void main(String[] args){
+    public static void main(String[] args) throws Exception {
 
         calculate(900, 100);
     }
 
-    public static void calculate(int starting_position, int len){
+    public static void calculate(int starting_position, int len) throws Exception {
         int ENC_BLOCK_SIZE = 16;
         int FILE_SIZE_BYTES = 992;
 
@@ -27,10 +29,19 @@ public class Test {
 
         String temp = "This isa  teascjasnckasckank  asacbscna  adbvukansc 73yr82y3rf acansca";
 
-        System.out.println("Length before padding : " + temp.length());
-        String temp_padding = padRight(temp, 992);
-        System.out.println("Length after padding : " + temp_padding.length());
-        System.out.println(temp_padding);
+//        System.out.println("Length before padding : " + temp.length());
+//        String temp_padding = padRight(temp, 992);
+//        System.out.println("Length after padding : " + temp_padding.length());
+//        System.out.println(temp_padding);
+
+        System.out.println(temp.substring(0, 0));
+
+        String key = "1J3Vu54eeo7EilrsdibjOLwKMpzDfWd5elGSSgRUljj8xTc6H28YvZVrtj7EPANP";
+        String str = "qwertyuiopasdfghjklzxcvbnm";
+
+        EFS e = new EFS(null);
+        byte[] hmac = e.calculateHMAC(str.getBytes(), key.getBytes());
+        System.out.println("Base64 output : " + Base64.getEncoder().encodeToString(hmac));
     }
 
     public static String padRight(String s, int n) {
