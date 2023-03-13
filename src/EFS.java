@@ -505,7 +505,7 @@ public class EFS extends Utility {
         return returnString.substring(sp, ep).getBytes();
     }
 
-    public byte[] read_new(String file_name, int starting_position, int len, String password) throws Exception {
+    /*public byte[] read_new(String file_name, int starting_position, int len, String password) throws Exception {
 
         if (!verifyPassword(password, file_name)) {
             throw new PasswordIncorrectException();
@@ -559,7 +559,7 @@ public class EFS extends Utility {
         ep = Math.max(0, ep);
 
         return returnString.substring(sp, ep).getBytes();
-    }
+    }*/
 
     public void write_new(String file_name, int starting_position, byte[] content, String password) throws Exception {
         System.out.println("======================================================");
@@ -601,8 +601,14 @@ public class EFS extends Utility {
 
         byte[] suffixBlockContents, prefixBlockContents;
 
-        suffixBlockContents = read_new(file_name, suffixStartPosition, suffixLength, password);
-        prefixBlockContents = read_new(file_name, prefixStartPosition, prefixLength, password);
+        if ( file_length == 0 ){
+            suffixBlockContents = "".getBytes("ISO-8859-1");
+            prefixBlockContents = "".getBytes("ISO-8859-1");
+        }else{
+            suffixBlockContents = read(file_name, suffixStartPosition, suffixLength, password);
+            prefixBlockContents = read(file_name, prefixStartPosition, prefixLength, password);
+        }
+
 
         String prefixString = new String(prefixBlockContents, "ISO-8859-1");
         String suffixString = new String(suffixBlockContents, "ISO-8859-1");
@@ -698,7 +704,7 @@ public class EFS extends Utility {
     @Override
     public void write(String file_name, int starting_position, byte[] content, String password) throws Exception {
 
-        if (!verifyPassword(password, file_name)) {
+        /*if (!verifyPassword(password, file_name)) {
             throw new PasswordIncorrectException();
         }
 
@@ -803,7 +809,8 @@ public class EFS extends Utility {
             updateFileLength(file_name, finalLength);
         }
 
-        System.out.println("File written successfully");
+        System.out.println("File written successfully");*/
+        write_new(file_name, starting_position, content, password);
     }
 
     /**

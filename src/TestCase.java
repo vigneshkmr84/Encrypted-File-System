@@ -35,13 +35,15 @@ public class TestCase{
 
 //        String text = "Agreed joy vanity regret met may ladies oppose who. Mile fail as left as hard eyes. Meet made call in mean four year it to. Prospect so branched wondered sensible of up. For gay consisted resolving pronounce sportsman saw discovery not. Northward or household as conveying we earnestly believing. No in up contrasted discretion inhabiting excellence. Entreaties we collecting unpleasant at everything conviction. Perpetual sincerity out suspected necessary one but provision satisfied. Respect nothing use set waiting pursuit nay you looking. If on prevailed concluded ye abilities. Address say you new but minuter greater. Do denied agreed in innate. Can and middletons thoroughly themselves him. Tolerably sportsmen belonging in september no am immediate newspaper. Theirs expect dinner it pretty indeed having no of. Principle september she conveying did eat may extensive. On then sake home is am leaf. Of suspicion do departure at extremely he believing. Do know said mind do rent they o";
 
+        System.out.println("Length of main contents : " + main_contents.length());
 
 //        case_create();
 //        case_first_write();
-//        case_read_new_all();
+        case_cut_write();
 //
 //        case_verify_pwd();
 //        case1();
+//        case_cut();
 //        case_read_new_all();
 //        case2();
 //        case_read_new_all();
@@ -52,8 +54,8 @@ public class TestCase{
 //        case5();
 //        case_read_new_all();
 //        case6();
-        case_read_new_all();
-//        case_check_integrity();
+//        case_read_new_all();
+        case_check_integrity();
 
 
     }
@@ -69,11 +71,21 @@ public class TestCase{
     }
 
     public static void case_first_write() throws Exception {
-        efs.write_new(fileName, 0, main_contents.getBytes(), password);
+        efs.write(fileName, 0, main_contents.getBytes(), password);
+    }
+
+    public static void case_cut_write() throws Exception {
+        efs.cut(fileName, 10, password);
+        byte[] contents = efs.read(fileName, 0, 10, password);
+        String out = new String(contents);
+        System.out.println("read_new Final Output : " + out);
+        System.out.println("read_new Output length: " + out.length());
+        efs.write(fileName, 0, main_contents.substring(1500).getBytes(), password);
+
     }
 
     public static void case_read_new_all() throws Exception {
-        byte[] contents = efs.read2(fileName, 905, 92, password);
+        byte[] contents = efs.read(fileName, 0, 3338, password);
         String out = new String(contents);
         System.out.println("read_new Final Output : " + out);
         System.out.println("read_new Output length: " + out.length());
@@ -82,30 +94,30 @@ public class TestCase{
     // writing on 0th position
     // only first file affected, rest remains same.
     public static void case1() throws Exception {
-        efs.write_new(fileName, 0, over_write_new.getBytes(), password);
+        efs.write(fileName, 0, over_write_new.getBytes(), password);
     }
 
     public static void case2() throws Exception {
-        efs.write_new(fileName, 100, over_write_new.getBytes(), password);
+        efs.write(fileName, 100, over_write_new.getBytes(), password);
     }
 
     // exactly the end of file 1. Only file 1 will be affected
     public static void case3() throws Exception {
-        efs.write_new(fileName, 905, over_write_new.getBytes(), password);
+        efs.write(fileName, 905, over_write_new.getBytes(), password);
     }
 
     public static void case4() throws Exception {
-        efs.write_new(fileName, 1000, over_write_new.getBytes(), password);
+        efs.write(fileName, 1000, over_write_new.getBytes(), password);
     }
 
     public static void case5() throws Exception {
-        efs.write_new(fileName, 2100, over_write_new.getBytes(), password);
+        efs.write(fileName, 2100, over_write_new.getBytes(), password);
     }
 
     // writing on last part file
     // Overflow case
     public static void case6() throws Exception {
-        efs.write_new(fileName, 3326, over_write_new.getBytes(), password);
+        efs.write(fileName, 3326, over_write_new.getBytes(), password);
     }
 
     public static void case_check_integrity() throws Exception {
