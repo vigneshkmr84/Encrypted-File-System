@@ -40,10 +40,8 @@ public class TestCase{
 //        case_create();
 //        case_first_write();
         case_cut_write();
-//
-//        case_verify_pwd();
+//        case_read_new_all();
 //        case1();
-//        case_cut();
 //        case_read_new_all();
 //        case2();
 //        case_read_new_all();
@@ -80,12 +78,13 @@ public class TestCase{
         String out = new String(contents);
         System.out.println("read_new Final Output : " + out);
         System.out.println("read_new Output length: " + out.length());
-        efs.write(fileName, 0, main_contents.substring(1500).getBytes(), password);
+        efs.write(fileName, 0, main_contents.getBytes(), password);
+        case_read_new_all();
 
     }
 
     public static void case_read_new_all() throws Exception {
-        byte[] contents = efs.read(fileName, 0, 3338, password);
+        byte[] contents = efs.read(fileName, 0, 3000, password);
         String out = new String(contents);
         System.out.println("read_new Final Output : " + out);
         System.out.println("read_new Output length: " + out.length());
